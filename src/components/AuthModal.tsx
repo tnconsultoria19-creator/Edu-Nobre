@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Mail, Lock, User as UserIcon, ArrowRight, AlertCircle } from 'lucide-react';
 import { User } from '../types';
+import { apiLogin, apiRegister } from '../lib/api';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -8,26 +9,6 @@ interface AuthModalProps {
   onLoginSuccess: (user: User) => void;
 }
 
-interface LocalAccount {
-  user: User;
-  passwordDigest: string;
-}
-
-const ACCOUNT_STORE_KEY = 'edunombre_accounts_v1';
-
-async function digestPassword(password: string): Promise<string> {
-  const bytes = new TextEncoder().encode(password);
-  const digest = await window.crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
-}
-
-function loadAccounts(): LocalAccount[] {
-  try {
-    return JSON.parse(window.localStorage.getItem(ACCOUNT_STORE_KEY) || '[]') as LocalAccount[];
-  } catch {
-    return [];
-  }
-}
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSuccess }) => {
   const [isRegister, setIsRegister] = useState(false);
@@ -51,33 +32,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
     setBusy(true);
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      const accounts = loadAccounts();
-      const existing = accounts.find((account) => account.user.email.toLowerCase() === normalizedEmail);
-
       if (isRegister) {
         if (!name.trim()) throw new Error('Introduza o seu nome completo.');
         if (password.length < 8) throw new Error('A palavra-passe deve ter pelo menos 8 caracteres.');
-        if (existing) throw new Error('Já existe uma conta com este e-mail. Inicie sessão.');
-        const newUser: User = {
-          id: `user-${Date.now()}`,
-          name: name.trim(),
-          email: normalizedEmail,
-          role,
-          status: role === 'Formador' ? 'Pendente' : 'Ativo',
-        };
-        const passwordDigest = await digestPassword(password);
-        window.localStorage.setItem(ACCOUNT_STORE_KEY, JSON.stringify([...accounts, { user: newUser, passwordDigest } satisfies LocalAccount]));
-        onLoginSuccess(newUser);
+        const result = await apiRegister({ name: name.trim(), email: normalizedEmail, password, role });
+        onLoginSuccess(result.user);
         onClose();
+        setPassword('');
         return;
       }
-
-      if (!existing) throw new Error('Não encontrámos uma conta para este e-mail. Crie uma conta primeiro.');
-      const digest = await digestPassword(password);
-      if (digest !== existing.passwordDigest) throw new Error('E-mail ou palavra-passe incorrectos.');
-      if (existing.user.status === 'Bloqueado') throw new Error('Esta conta está bloqueada. Contacte o administrador.');
-      onLoginSuccess(existing.user);
+      if (!normalizedEmail || !password) throw new Error('Introduza o e-mail e a palavra-passe.');
+      const result = await apiLogin({ email: normalizedEmail, password });
+      onLoginSuccess(result.user);
       onClose();
+      setPassword('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível concluir o pedido.');
     } finally {

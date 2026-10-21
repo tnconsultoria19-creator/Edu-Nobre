@@ -16,9 +16,9 @@ import { ItemDetailsModal } from './components/ItemDetailsModal';
 import { AdminPortalModal } from './components/AdminPortalModal';
 import { UserLibraryModal } from './components/UserLibraryModal';
 
-import { MOCK_CATALOG_ITEMS } from './data/mockData';
 import { CatalogItem, Category, ContentType, CartItem, User, AuditLogEntry } from './types';
 import { BookOpen } from 'lucide-react';
+import { apiArchiveProduct, apiCreateOrder, apiCreateProduct, apiListAudit, apiListLibrary, apiListProducts, apiListUsers, apiLogout, apiMe, apiRemoveUser, apiReviewProduct, apiUpdateProduct, apiUpdateUser, getSessionToken, setSessionToken } from './lib/api';
 
 const readBrowserState = <T,>(key: string, fallback: T): T => {
   if (typeof window === 'undefined') return fallback;
@@ -45,17 +45,14 @@ export function App() {
   const [user, setUser] = useState<User | null>(null);
 
   // Dynamic Catalog State
-  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>(() => readBrowserState('edunombre_catalog_v1', MOCK_CATALOG_ITEMS));
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
 
   // Users List State for Admin Management
   const [usersList, setUsersList] = useState<User[]>(() => readBrowserState('edunombre_users_v2', []));
 
   // Purchased Items Library State
-  const [purchasedItems, setPurchasedItems] = useState<CatalogItem[]>(() => readBrowserState('edunombre_library_v1', [
-    MOCK_CATALOG_ITEMS[0],
-    MOCK_CATALOG_ITEMS[1],
-  ]));
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => readBrowserState('edunombre_audit_v1', []));
+  const [purchasedItems, setPurchasedItems] = useState<CatalogItem[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
 
   // Filters, Search & Sorting
   const [selectedCategory, setSelectedCategory] = useState<Category>('Todas');
@@ -80,42 +77,52 @@ export function App() {
   const [formModalDetails, setFormModalDetails] = useState('');
   const [quickViewItem, setQuickViewItem] = useState<CatalogItem | null>(null);
 
-  useEffect(() => writeBrowserState('edunombre_catalog_v1', catalogItems), [catalogItems]);
-  useEffect(() => writeBrowserState('edunombre_users_v2', usersList), [usersList]);
-  useEffect(() => writeBrowserState('edunombre_library_v1', purchasedItems), [purchasedItems]);
-  useEffect(() => writeBrowserState('edunombre_audit_v1', auditLogs), [auditLogs]);
+  useEffect(() => {
+    let active = true;
+    if (!getSessionToken()) return () => { active = false; };
+    apiMe().then(({ user: restoredUser }) => { if (active) setUser(restoredUser); })
+      .catch(() => { if (active) setSessionToken(null); });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    apiListProducts()
+      .then(({ items }) => { if (active) setCatalogItems(items); })
+      .catch((error) => console.error('Edu-Nobre: não foi possível carregar o catálogo.', error));
+    return () => { active = false; };
+  }, [user?.id, user?.role]);
+
+  useEffect(() => {
+    let active = true;
+    if (user?.role === 'Administrador') {
+      Promise.all([apiListUsers(), apiListAudit()])
+        .then(([users, logs]) => {
+          if (!active) return;
+          setUsersList(users.users);
+          setAuditLogs(logs);
+        })
+        .catch((error) => console.error('Edu-Nobre: não foi possível carregar a gestão administrativa.', error));
+    } else {
+      setUsersList([]);
+      setAuditLogs([]);
+    }
+    return () => { active = false; };
+  }, [user?.id, user?.role]);
+
+  useEffect(() => {
+    let active = true;
+    if (user && userLibraryOpen) {
+      apiListLibrary().then(({ items }) => { if (active) setPurchasedItems(items); })
+        .catch((error) => console.error('Edu-Nobre: não foi possível carregar a biblioteca.', error));
+    } else if (!user) {
+      setPurchasedItems([]);
+    }
+    return () => { active = false; };
+  }, [user?.id, userLibraryOpen]);
+
   useEffect(() => writeBrowserState('edunombre_cart_v1', cartItems), [cartItems]);
   useEffect(() => writeBrowserState('edunombre_favourites_v1', wishlistIds), [wishlistIds]);
-
-  const recordAudit = (
-    action: AuditLogEntry['action'],
-    entityType: AuditLogEntry['entityType'],
-    description: string,
-    entityId?: string,
-    actor: User | null = user
-  ) => {
-    const entry: AuditLogEntry = {
-      id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      action, entityType, entityId, description,
-      actorName: actor?.name || 'Sistema',
-      actorEmail: actor?.email,
-      createdAt: new Date().toISOString(),
-    };
-    setAuditLogs((prev) => [entry, ...prev].slice(0, 1000));
-  };
-
-  const updateStoredAccount = (email: string, changes: Partial<User> | null) => {
-    try {
-      const key = 'edunombre_accounts_v1';
-      const saved = JSON.parse(window.localStorage.getItem(key) || '[]') as Array<{ user: User; passwordDigest: string }>;
-      const next = changes === null
-        ? saved.filter((account) => account.user.email.toLowerCase() !== email.toLowerCase())
-        : saved.map((account) => account.user.email.toLowerCase() === email.toLowerCase() ? { ...account, user: { ...account.user, ...changes } } : account);
-      window.localStorage.setItem(key, JSON.stringify(next));
-    } catch {
-      // In production, status/permission checks must also be enforced server-side.
-    }
-  };
 
   // Comprehensive Filter & Sorting Logic (Only Published items show in store)
   const filteredCatalog = useMemo(() => {
@@ -163,100 +170,124 @@ export function App() {
     });
   }, [catalogItems, selectedCategory, selectedContentType, priceFilter, sortBy, searchQuery, showWishlistOnly, wishlistIds]);
 
-  // Catalog Item Handlers (Admin / Creator)
-  const handleAddItem = (newItem: CatalogItem) => {
-    setCatalogItems((prev) => [newItem, ...prev]);
-    recordAudit('Criado', 'Conteúdo', `Criou “${newItem.title}” (${newItem.approvalStatus || 'Publicado'}).`, newItem.id);
-  };
-
-  const handleUpdateItem = (updatedItem: CatalogItem) => {
-    const existing = catalogItems.find((item) => item.id === updatedItem.id);
-    const fields: Array<[string, unknown, unknown]> = existing ? [
-      ['Título', existing.title, updatedItem.title],
-      ['Categoria', existing.category, updatedItem.category],
-      ['Formato', existing.contentType, updatedItem.contentType],
-      ['Preço', existing.price, updatedItem.price],
-      ['Preço anterior', existing.originalPrice ?? null, updatedItem.originalPrice ?? null],
-      ['Autor/Formador', existing.author.name, updatedItem.author.name],
-      ['Especialidade', existing.author.role || '', updatedItem.author.role || ''],
-      ['Imagem de capa', existing.image, updatedItem.image],
-      ['Descrição', existing.description, updatedItem.description],
-      ['Estado', existing.approvalStatus || 'Publicado', updatedItem.approvalStatus || 'Publicado'],
-      ['Motivo de rejeição', existing.rejectionReason || '', updatedItem.rejectionReason || ''],
-    ] : [];
-    const changes = fields
-      .filter(([, before, after]) => String(before ?? '') !== String(after ?? ''))
-      .map(([label, before, after]) => `${label}: “${String(before ?? '—').slice(0, 100)}” → “${String(after ?? '—').slice(0, 100)}”`);
-    setCatalogItems((prev) => prev.map((i) => (i.id === updatedItem.id ? updatedItem : i)));
-    recordAudit('Editado', 'Conteúdo', changes.length
-      ? `Actualizou “${updatedItem.title}”. ${changes.join('; ')}`
-      : `Guardou “${updatedItem.title}” sem diferenças de campo detectadas.`, updatedItem.id);
-  };
-
-  const handleDeleteItem = (id: string) => {
-    const removed = catalogItems.find((item) => item.id === id);
-    setCatalogItems((prev) => prev.filter((i) => i.id !== id));
-    setCartItems((prev) => prev.filter((item) => item.item.id !== id));
-    setWishlistIds((prev) => prev.filter((itemId) => itemId !== id));
-    if (removed) recordAudit('Eliminado', 'Conteúdo', `Eliminou “${removed.title}”.`, id);
-  };
-
-  const handleApproveItem = (id: string) => {
-    const item = catalogItems.find((entry) => entry.id === id);
-    setCatalogItems((prev) => prev.map((i) => (i.id === id ? { ...i, approvalStatus: 'Publicado', rejectionReason: undefined } : i)));
-    if (item) recordAudit('Aprovado', 'Conteúdo', `Aprovou e publicou “${item.title}”.`, id);
-  };
-
-  const handleRejectItem = (id: string, reason: string) => {
-    const item = catalogItems.find((entry) => entry.id === id);
-    setCatalogItems((prev) => prev.map((i) => i.id === id ? { ...i, approvalStatus: 'Rejeitado', rejectionReason: reason } : i));
-    if (item) recordAudit('Rejeitado', 'Conteúdo', `Rejeitou “${item.title}”. Motivo: ${reason || 'Não indicado'}`, id);
-  };
-
-  const handleUpdateUserRole = (userId: string, role: User['role']) => {
-    const target = usersList.find((u) => u.id === userId);
-    if (!target) return;
-    const previousRole = target.role;
-    const nextStatus = role !== previousRole && role === 'Formador' ? 'Pendente' : target.status;
-    setUsersList((prev) => prev.map((u) => u.id === userId ? { ...u, role, status: nextStatus } : u));
-    updateStoredAccount(target.email, { role, status: nextStatus });
-    recordAudit('Papel alterado', 'Utilizador', `Alterou ${target.name}: papel “${previousRole}” → “${role}”${nextStatus !== target.status ? `; estado “${target.status || 'Ativo'}” → “${nextStatus}”` : ''}.`, userId);
-  };
-
-  const handleUpdateUserStatus = (userId: string, status: NonNullable<User['status']>) => {
-    const target = usersList.find((u) => u.id === userId);
-    if (!target || (target.role === 'Administrador' && status !== 'Ativo')) return;
-    const previousStatus = target.status || 'Ativo';
-    setUsersList((prev) => prev.map((u) => u.id === userId ? { ...u, status } : u));
-    updateStoredAccount(target.email, { status });
-    if (user?.id === userId) setUser({ ...user, status });
-    recordAudit('Estado alterado', 'Utilizador', `Alterou o estado de ${target.name}: “${previousStatus}” → “${status}”.`, userId);
-  };
-
-  const handleRemoveUser = (userId: string) => {
-    const target = usersList.find((u) => u.id === userId);
-    if (!target || target.role === 'Administrador' || user?.id === userId) return;
-    setUsersList((prev) => prev.filter((u) => u.id !== userId));
-    updateStoredAccount(target.email, null);
-    recordAudit('Eliminado', 'Utilizador', `Eliminou a conta de ${target.name} (${target.email}).`, userId);
-  };
-
-  const handleSuccessfulLogin = (signedInUser: User) => {
-    const existing = usersList.find((u) => u.id === signedInUser.id);
-    const finalUser = existing ? { ...signedInUser, role: existing.role, status: existing.status || signedInUser.status } : signedInUser;
-    if (finalUser.status === 'Bloqueado') return;
-    setUser(finalUser);
-    setUsersList((prev) => [finalUser, ...prev.filter((u) => u.id !== finalUser.id && u.email.toLowerCase() !== finalUser.email.toLowerCase())]);
-    if (!existing) {
-      recordAudit('Registado', 'Utilizador', `Novo utilizador registado como ${finalUser.role}: ${finalUser.name}.`, finalUser.id, finalUser);
-    } else {
-      recordAudit('Sessão iniciada', 'Sessão', `Iniciou sessão: ${finalUser.email}.`, finalUser.id, finalUser);
+  const refreshAdminData = async () => {
+    if (user?.role !== 'Administrador') return;
+    try {
+      const [users, logs] = await Promise.all([apiListUsers(), apiListAudit()]);
+      setUsersList(users.users);
+      setAuditLogs(logs);
+    } catch (error) {
+      console.error('Edu-Nobre: actualização administrativa falhou.', error);
     }
   };
 
-  const handleLogout = () => {
-    if (user) recordAudit('Sessão terminada', 'Sessão', `Terminou sessão: ${user.email}.`, user.id, user);
+  const handleAddItem = async (newItem: CatalogItem) => {
+    try {
+      const saved = await apiCreateProduct(newItem);
+      setCatalogItems((prev) => [saved, ...prev.filter((item) => item.id !== saved.id)]);
+      await refreshAdminData();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Não foi possível guardar o conteúdo.');
+      throw error;
+    }
+  };
+
+  const handleUpdateItem = async (updatedItem: CatalogItem) => {
+    try {
+      const saved = await apiUpdateProduct(updatedItem);
+      setCatalogItems((prev) => prev.map((item) => item.id === saved.id ? saved : item));
+      await refreshAdminData();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Não foi possível actualizar o conteúdo.');
+      throw error;
+    }
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    try {
+      await apiArchiveProduct(id);
+      setCatalogItems((prev) => prev.filter((item) => item.id !== id));
+      setCartItems((prev) => prev.filter((item) => item.item.id !== id));
+      setWishlistIds((prev) => prev.filter((itemId) => itemId !== id));
+      await refreshAdminData();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Não foi possível arquivar o conteúdo.');
+    }
+  };
+
+  const handleApproveItem = async (id: string) => {
+    try {
+      await apiReviewProduct(id, 'approve');
+      const { items } = await apiListProducts();
+      setCatalogItems(items);
+      await refreshAdminData();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Não foi possível aprovar o conteúdo.');
+    }
+  };
+
+  const handleRejectItem = async (id: string, reason: string) => {
+    try {
+      await apiReviewProduct(id, 'reject', reason);
+      const { items } = await apiListProducts();
+      setCatalogItems(items);
+      await refreshAdminData();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Não foi possível rejeitar o conteúdo.');
+    }
+  };
+
+  const handleUpdateUserRole = async (userId: string, role: User['role']) => {
+    const target = usersList.find((entry) => entry.id === userId);
+    if (!target) return;
+    const status = role === 'Formador' && role !== target.role ? 'Pendente' : target.status;
+    try {
+      const saved = await apiUpdateUser(userId, { role, status });
+      setUsersList((prev) => prev.map((entry) => entry.id === userId ? saved : entry));
+      if (user?.id === userId) setUser(saved);
+      await refreshAdminData();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Não foi possível alterar o papel.');
+    }
+  };
+
+  const handleUpdateUserStatus = async (userId: string, status: NonNullable<User['status']>) => {
+    const target = usersList.find((entry) => entry.id === userId);
+    if (!target || (target.role === 'Administrador' && status !== 'Ativo')) return;
+    try {
+      const saved = await apiUpdateUser(userId, { role: target.role, status });
+      setUsersList((prev) => prev.map((entry) => entry.id === userId ? saved : entry));
+      if (user?.id === userId) setUser(saved);
+      await refreshAdminData();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Não foi possível alterar o estado do utilizador.');
+    }
+  };
+
+  const handleRemoveUser = async (userId: string) => {
+    const target = usersList.find((entry) => entry.id === userId);
+    if (!target || target.role === 'Administrador' || user?.id === userId) return;
+    try {
+      await apiRemoveUser(userId);
+      setUsersList((prev) => prev.filter((entry) => entry.id !== userId));
+      await refreshAdminData();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Não foi possível bloquear o utilizador.');
+    }
+  };
+
+  const handleSuccessfulLogin = (signedInUser: User) => {
+    setUser(signedInUser);
+    setAuthOpen(false);
+  };
+
+  const handleLogout = async () => {
+    try { await apiLogout(); }
+    catch (error) { console.warn('A sessão local foi terminada, mas a API reportou um erro.', error); }
     setUser(null);
+    setUsersList([]);
+    setAuditLogs([]);
+    setPurchasedItems([]);
   };
 
   // Cart / Direct Purchase Handlers (Kubeta.ao style)
@@ -442,7 +473,12 @@ export function App() {
         onClose={() => setCartOpen(false)}
         cartItems={cartItems}
         onRemoveItem={handleRemoveFromCart}
-        onOpenFormModal={handleOpenForm}
+        onOpenFormModal={(need, details) => {
+          if (!user) { setAuthOpen(true); return; }
+          apiCreateOrder(cartItems.map(({ item, quantity }) => ({ productId: item.id, quantity })), 'whatsapp')
+            .then(() => handleOpenForm(need || 'Comprar', details || ''))
+            .catch((error) => alert(error instanceof Error ? error.message : 'Não foi possível registar o pedido de compra.'));
+        }}
       />
 
       <AuthModal
@@ -477,10 +513,7 @@ export function App() {
         onApproveItem={handleApproveItem}
         onRejectItem={handleRejectItem}
         currentUser={user}
-        setCurrentUser={(nextUser) => {
-          setUser(nextUser);
-          recordAudit('Estado alterado', 'Sessão', `Perfil activo alterado para ${nextUser.role} (${nextUser.email}).`, nextUser.id, nextUser);
-        }}
+        setCurrentUser={(nextUser) => { setUser(nextUser); }}
         usersList={usersList}
         onUpdateUserRole={handleUpdateUserRole}
         onUpdateUserStatus={handleUpdateUserStatus}

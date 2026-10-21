@@ -34,8 +34,8 @@ interface AdminPortalModalProps {
   isOpen: boolean;
   onClose: () => void;
   catalogItems: CatalogItem[];
-  onAddItem: (item: CatalogItem) => void;
-  onUpdateItem: (item: CatalogItem) => void;
+  onAddItem: (item: CatalogItem) => void | Promise<void>;
+  onUpdateItem: (item: CatalogItem) => void | Promise<void>;
   onDeleteItem: (id: string) => void;
   onApproveItem: (id: string) => void;
   onRejectItem: (id: string, reason: string) => void;
@@ -154,7 +154,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
     setActiveTab('add_edit');
   };
 
-  const handleSubmitForm = (e: React.FormEvent) => {
+  const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formTitle.trim()) return;
@@ -196,15 +196,17 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
       createdAt: editingItem?.createdAt || new Date().toISOString(),
     };
 
-    if (editingItem) {
-      onUpdateItem(newItemData);
-    } else {
-      onAddItem(newItemData);
+    try {
+      if (editingItem) await onUpdateItem(newItemData);
+      else await onAddItem(newItemData);
+    } catch {
+      // The parent displays the API error; do not claim the save succeeded.
+      return;
     }
 
-    alert(currentUser?.role === 'Administrador' 
-      ? 'Item guardado e publicado no catálogo principal!' 
-      : 'Submissão enviada com sucesso! Aguarda aprovação do Administrador.');
+    alert(currentUser?.role === 'Administrador'
+      ? 'Item guardado no servidor e enviado para o catálogo.'
+      : 'Submissão guardada no servidor. Aguarda aprovação do Administrador.');
 
     setActiveTab(currentUser?.role === 'Administrador' ? 'catalog' : 'creator');
   };
