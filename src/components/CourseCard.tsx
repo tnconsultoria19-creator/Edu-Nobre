@@ -94,6 +94,11 @@ export const CourseCard: React.FC<CourseCardProps> = ({
         </div>
 
         <div>
+          {onQuickView && (
+            <button type="button" onClick={() => onQuickView(item)} className="w-full mb-2 py-2 text-sm font-semibold text-[#625a54] hover:text-[#8c3a27] border border-[#e6ded6] rounded-full transition-colors cursor-pointer">
+              Ver detalhes
+            </button>
+          )}
           {/* Author & Star Rating Row */}
           <div className="flex items-center justify-between gap-2 mb-4 pt-1">
             <div className="flex items-center gap-2 min-w-0">

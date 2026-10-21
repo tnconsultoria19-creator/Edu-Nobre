@@ -193,6 +193,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Admin & Portal CTA */}
           {currentUser?.role === 'Administrador' && <button onClick={onOpenAdminPortal} className="inline-flex items-center gap-1.5 bg-[#28231f] hover:bg-[#403831] text-white text-sm font-semibold px-3.5 py-2 rounded-full transition-all shadow-sm cursor-pointer" title="Abrir painel de administração"><ShieldCheck className="w-4 h-4 text-[#d8c29b]" /><span className="hidden sm:inline">Admin</span></button>}
+          {currentUser?.role === 'Formador' && <button onClick={onOpenAdminPortal} className="inline-flex items-center gap-1.5 bg-[#f4eee8] hover:bg-[#ebe1d7] text-[#7b3524] text-sm font-semibold px-3.5 py-2 rounded-full transition-colors cursor-pointer border border-[#e6ded6]" title="Abrir o portal do formador"><BookOpen className="w-4 h-4" /><span className="hidden sm:inline">Portal do Formador</span></button>}
 
           {/* Account Login CTA */}
           <button
