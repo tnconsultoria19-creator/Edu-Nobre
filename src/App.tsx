@@ -77,6 +77,7 @@ export function App() {
   const [userLibraryOpen, setUserLibraryOpen] = useState(false);
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [formModalNeed, setFormModalNeed] = useState<string>('Comprar');
+  const [formModalDetails, setFormModalDetails] = useState('');
   const [quickViewItem, setQuickViewItem] = useState<CatalogItem | null>(null);
 
   useEffect(() => writeBrowserState('edunombre_catalog_v1', catalogItems), [catalogItems]);
@@ -265,8 +266,9 @@ export function App() {
     );
   };
 
-  const handleOpenForm = (need: string = 'Comprar') => {
+  const handleOpenForm = (need: string = 'Comprar', details: string = '') => {
     setFormModalNeed(need);
+    setFormModalDetails(details);
     setFormModalOpen(true);
   };
 
@@ -422,7 +424,6 @@ export function App() {
         onClose={() => setCartOpen(false)}
         cartItems={cartItems}
         onRemoveItem={handleRemoveFromCart}
-        onClearCart={handleClearCart}
         onOpenFormModal={handleOpenForm}
       />
 
@@ -437,6 +438,7 @@ export function App() {
           isOpen={formModalOpen}
           onClose={() => setFormModalOpen(false)}
           defaultNeed={formModalNeed}
+          defaultDetails={formModalDetails}
         />
       </div>
 

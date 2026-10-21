@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Send, CheckCircle2, PhoneCall } from 'lucide-react';
 import { ContactFormData } from '../types';
 
@@ -6,12 +6,14 @@ interface PlatformAgencyFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultNeed?: string;
+  defaultDetails?: string;
 }
 
 export const PlatformAgencyFormModal: React.FC<PlatformAgencyFormModalProps> = ({
   isOpen,
   onClose,
   defaultNeed = 'Comprar',
+  defaultDetails = '',
 }) => {
   const [formData, setFormData] = useState<ContactFormData>({
     fullName: '',
@@ -23,6 +25,16 @@ export const PlatformAgencyFormModal: React.FC<PlatformAgencyFormModalProps> = (
 
   const [submitted, setSubmitted] = useState(false);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const allowedNeeds: ContactFormData['need'][] = ['Comprar', 'Ser Formador', 'Afiliado', 'Corp.'];
+    const need = allowedNeeds.includes(defaultNeed as ContactFormData['need'])
+      ? defaultNeed as ContactFormData['need']
+      : 'Comprar';
+    setFormData((current) => ({ ...current, need, details: defaultDetails }));
+    setSubmitted(false);
+  }, [isOpen, defaultNeed, defaultDetails]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -33,9 +45,7 @@ export const PlatformAgencyFormModal: React.FC<PlatformAgencyFormModalProps> = (
     const text = `*Novo Contacto Edunombre*%0A%0A*Nome:* ${encodeURIComponent(formData.fullName)}%0A*Necessidade:* ${encodeURIComponent(formData.need)}%0A*Localização:* ${encodeURIComponent(formData.provinceCountry)}%0A*Área:* ${encodeURIComponent(formData.fieldOfStudy)}%0A*Detalhes:* ${encodeURIComponent(formData.details)}`;
     const whatsappUrl = `https://wa.me/244900000000?text=${text}`;
 
-    setTimeout(() => {
-      window.open(whatsappUrl, '_blank');
-    }, 1200);
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (

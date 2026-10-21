@@ -7,8 +7,7 @@ interface CartDrawerProps {
   onClose: () => void;
   cartItems: CartItem[];
   onRemoveItem: (id: string) => void;
-  onClearCart: () => void;
-  onOpenFormModal: (need?: string) => void;
+  onOpenFormModal: (need?: string, details?: string) => void;
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
@@ -16,11 +15,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onClose,
   cartItems,
   onRemoveItem,
-  onClearCart,
   onOpenFormModal,
 }) => {
-  const [checkedOut, setCheckedOut] = React.useState(false);
-
   if (!isOpen) return null;
 
   const totalPrice = cartItems.reduce(
@@ -29,13 +25,18 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   );
 
   const handleCheckout = () => {
-    setCheckedOut(true);
-    setTimeout(() => {
-      onClearCart();
-      setCheckedOut(false);
-      onClose();
-      onOpenFormModal('Comprar');
-    }, 1500);
+    const itemsSummary = cartItems
+      .map(({ item, quantity }) => {
+        const lineTotal = item.price * quantity;
+        const unitPrice = item.price === 0 ? 'Grátis' : `${item.price.toLocaleString('pt-AO')} AOA`;
+        const total = lineTotal === 0 ? 'Grátis' : `${lineTotal.toLocaleString('pt-AO')} AOA`;
+        return `${quantity} × ${item.title} — ${unitPrice} por unidade; subtotal: ${total}`;
+      })
+      .join('\n');
+    const totalLabel = totalPrice === 0 ? 'Grátis' : `${totalPrice.toLocaleString('pt-AO')} AOA`;
+    const orderSummary = `Pedido de compra Edunombre\n\n${itemsSummary}\n\nTotal estimado: ${totalLabel}\n\nEste é um pedido de compra; o pagamento ainda não foi processado.`;
+    onClose();
+    onOpenFormModal('Comprar', orderSummary);
   };
 
   return (
@@ -45,7 +46,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         <div className="p-5 border-b border-[#e2d5c8] flex items-center justify-between bg-[#1a1a1a] text-white">
           <div className="flex items-center gap-2 font-black font-outfit text-base">
             <ShoppingBag className="w-5 h-5 text-[#f0a67d]" />
-            <span>Seu Carrinho ({cartItems.length})</span>
+            <span>Seu Carrinho ({cartItems.reduce((sum, entry) => sum + entry.quantity, 0)})</span>
           </div>
           <button
             onClick={onClose}
@@ -57,15 +58,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
         {/* Content */}
         <div className="p-5 flex-1 overflow-y-auto space-y-4">
-          {checkedOut ? (
-            <div className="text-center py-12 space-y-3">
-              <CheckCircle className="w-12 h-12 text-emerald-600 mx-auto animate-bounce" />
-              <div className="text-lg font-black text-[#1a1a1a]">Redireccionando...</div>
-              <p className="text-xs text-[#858586]">
-                A preparar a sua encomenda e dados de pagamento em Kwanza.
-              </p>
-            </div>
-          ) : cartItems.length === 0 ? (
+          {cartItems.length === 0 ? (
             <div className="text-center py-16 space-y-4">
               <div className="w-16 h-16 rounded-full bg-[#f7f3ee] text-[#858586] flex items-center justify-center mx-auto">
                 <ShoppingBag className="w-8 h-8" />
@@ -111,7 +104,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         </div>
 
         {/* Footer */}
-        {cartItems.length > 0 && !checkedOut && (
+        {cartItems.length > 0 && (
           <div className="p-5 border-t border-[#e2d5c8] bg-[#faf7f4] space-y-3">
             <div className="flex items-center justify-between text-sm font-bold text-[#1a1a1a]">
               <span>Total:</span>
@@ -122,11 +115,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </span>
             </div>
 
+            <p className="text-xs leading-relaxed text-[#746b65]">O pedido será enviado pelo WhatsApp para confirmação. O pagamento ainda não é processado nesta etapa.</p>
             <button
               onClick={handleCheckout}
-              className="w-full bg-[#be462a] hover:bg-[#a53b21] text-white text-xs font-bold py-3.5 rounded-full transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full bg-[#be462a] hover:bg-[#a53b21] text-white text-sm font-semibold py-3.5 rounded-full transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>Finalizar Encomenda</span>
+              <span>Solicitar compra via WhatsApp</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
