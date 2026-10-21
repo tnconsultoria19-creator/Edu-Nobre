@@ -48,7 +48,7 @@ export function App() {
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
 
   // Users List State for Admin Management
-  const [usersList, setUsersList] = useState<User[]>(() => readBrowserState('edunombre_users_v2', []));
+  const [usersList, setUsersList] = useState<User[]>([]);
 
   // Purchased Items Library State
   const [purchasedItems, setPurchasedItems] = useState<CatalogItem[]>([]);

@@ -189,6 +189,45 @@ async function handle(request, env) {
     return respond({ service: "Edu-Nobre API", status: db && db.ok === 1 ? "ok" : "degraded", database: db && db.ok === 1 ? "connected" : "unavailable" }, db && db.ok === 1 ? 200 : 503);
   }
   if (!path.startsWith("/api/")) return fail("Rota não encontrada.", 404);
+  if (path === "/setup" && method === "GET") {
+    const setupHtml = `<!doctype html>
+<html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Configuração inicial | Edu-Nobre</title>
+<style>
+:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#faf7f4;color:#1a1a1a;font:16px Arial,sans-serif;min-height:100vh;display:grid;place-items:center;padding:20px}.card{width:min(100%,480px);background:white;border:1px solid #e2d5c8;border-radius:24px;padding:28px;box-shadow:0 20px 60px #1a1a1a12}h1{font-size:25px;margin:0 0 8px;color:#0c2340}p{color:#655b54;line-height:1.5;font-size:14px}label{display:block;font-size:13px;font-weight:700;margin:15px 0 6px}input{width:100%;padding:12px;border:1px solid #e2d5c8;border-radius:12px;font:inherit}button{width:100%;margin-top:20px;padding:14px;border:0;border-radius:999px;color:white;background:#be462a;font-weight:700;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}.status{padding:12px;border-radius:12px;background:#f7f3ee;font-size:14px;line-height:1.5;margin-top:14px;white-space:pre-wrap}.hidden{display:none!important}.brand{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#be462a;margin-bottom:16px}
+</style></head><body><main class="card"><div class="brand">Edu-Nobre · configuração protegida</div><h1>Criar administrador principal</h1>
+<p>Utilize esta página uma única vez para criar a primeira conta administrativa. A palavra-passe é enviada directamente à API por HTTPS e não é guardada no navegador.</p>
+<div id="status" class="status" role="status">A verificar se a configuração inicial ainda está disponível…</div>
+<form id="form" class="hidden">
+<label for="name">Nome completo</label><input id="name" autocomplete="name" minlength="2" maxlength="100" required>
+<label for="email">E-mail administrativo</label><input id="email" type="email" autocomplete="email" maxlength="254" required>
+<label for="password">Palavra-passe (mínimo 12 caracteres)</label><input id="password" type="password" autocomplete="new-password" minlength="12" maxlength="200" required>
+<label for="token">Token de configuração de utilização única</label><input id="token" type="password" autocomplete="off" required>
+<button id="submit" type="submit">Criar administrador</button>
+</form>
+</main><script>
+const statusBox=document.getElementById('status'),form=document.getElementById('form'),button=document.getElementById('submit');
+fetch('/api/auth/bootstrap-status',{cache:'no-store'}).then(r=>r.json()).then(s=>{
+ if(s.bootstrapRequired&&s.bootstrapEnabled){form.classList.remove('hidden');statusBox.textContent='Configuração disponível. Crie a conta do administrador principal.';}
+ else{form.classList.add('hidden');statusBox.textContent=s.bootstrapRequired?'A configuração não está habilitada. Contacte o responsável técnico.':'A conta administrativa inicial já existe. A criação inicial está encerrada; inicie sessão no Edu-Nobre.';}
+}).catch(()=>{statusBox.textContent='Não foi possível verificar a API. Confirme se o serviço está activo.';});
+form.addEventListener('submit',async(e)=>{
+ e.preventDefault();button.disabled=true;statusBox.textContent='A criar a conta administrativa…';
+ try{
+  const r=await fetch('/api/auth/bootstrap',{method:'POST',headers:{'Content-Type':'application/json','X-Bootstrap-Token':document.getElementById('token').value},body:JSON.stringify({name:document.getElementById('name').value,email:document.getElementById('email').value,password:document.getElementById('password').value})});
+  const data=await r.json();
+  if(!r.ok)throw new Error(data.error||'Não foi possível criar a conta.');
+  form.reset();form.classList.add('hidden');
+  statusBox.textContent='Administrador criado com sucesso. Abra o site Edu-Nobre e inicie sessão com o e-mail e a palavra-passe que acabou de definir. A configuração inicial está agora encerrada.';
+ }catch(err){statusBox.textContent=err instanceof Error?err.message:'Ocorreu um erro.';button.disabled=false;}
+});
+</script></body></html>`;
+    const headers = new Headers(corsHeaders);
+    headers.set("Content-Type", "text/html; charset=utf-8");
+    headers.set("Cache-Control", "no-store");
+    headers.set("X-Content-Type-Options", "nosniff");
+    return new Response(setupHtml, { status: 200, headers: headers });
+  }
+
   const currentUser = await getSessionUser(request, env);
   const parts = path.split("/").filter(Boolean);
   const method = request.method.toUpperCase();
