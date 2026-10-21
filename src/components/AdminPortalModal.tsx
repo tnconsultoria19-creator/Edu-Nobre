@@ -192,8 +192,8 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
       description: formDescription,
       // If Admin creates/edits -> Auto Publish. If Creator submits -> Set to Pendente!
       approvalStatus: currentUser?.role === 'Administrador' ? 'Publicado' : 'Pendente',
-      creatorEmail: currentUser?.email,
-      createdAt: new Date().toLocaleDateString('pt-PT'),
+      creatorEmail: editingItem?.creatorEmail || currentUser?.email,
+      createdAt: editingItem?.createdAt || new Date().toISOString(),
     };
 
     if (editingItem) {
@@ -723,12 +723,12 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                 <h4 className="text-sm font-bold text-[#0c2340]">Minhas Submissões & Estado</h4>
 
                 <div className="space-y-3">
-                  {catalogItems.filter(i => i.creatorEmail === currentUser?.email || i.author.name === currentUser?.name).length === 0 ? (
+                  {catalogItems.filter(i => i.creatorEmail?.toLowerCase() === currentUser?.email.toLowerCase()).length === 0 ? (
                     <div className="text-center py-8 text-xs text-slate-500">
                       Ainda não submeteu nenhum conteúdo com esta conta. Clique em "+ Submeter Novo Conteúdo" acima.
                     </div>
                   ) : (
-                    catalogItems.filter(i => i.creatorEmail === currentUser?.email || i.author.name === currentUser?.name).map((item) => (
+                    catalogItems.filter(i => i.creatorEmail?.toLowerCase() === currentUser?.email.toLowerCase()).map((item) => (
                       <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
                         <div className="flex items-center gap-3 min-w-0">
                           <img src={item.image} alt="" className="w-12 h-12 rounded-lg object-cover bg-slate-200 shrink-0" />

@@ -196,7 +196,7 @@ export function App() {
   const handleUpdateUserRole = (userId: string, role: User['role']) => {
     const target = usersList.find((u) => u.id === userId);
     if (!target) return;
-    setUsersList((prev) => prev.map((u) => u.id === userId ? { ...u, role, status: role === 'Formador' && u.status !== 'Ativo' ? 'Pendente' : u.status } : u));
+    setUsersList((prev) => prev.map((u) => u.id === userId ? { ...u, role, status: role !== u.role && role === 'Formador' ? 'Pendente' : u.status } : u));
     updateStoredAccount(target.email, { role });
     recordAudit('Papel alterado', 'Utilizador', `Alterou o papel de ${target.name} para ${role}.`, userId);
   };
