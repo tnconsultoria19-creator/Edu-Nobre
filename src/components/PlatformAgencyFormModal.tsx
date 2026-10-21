@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Send, CheckCircle2, PhoneCall } from 'lucide-react';
+import { X, Send, CheckCircle2 } from 'lucide-react';
 import { ContactFormData } from '../types';
 
 interface PlatformAgencyFormModalProps {
@@ -43,7 +43,7 @@ export const PlatformAgencyFormModal: React.FC<PlatformAgencyFormModalProps> = (
 
     // Prepare WhatsApp link
     const text = `*Novo Contacto Edunombre*%0A%0A*Nome:* ${encodeURIComponent(formData.fullName)}%0A*Necessidade:* ${encodeURIComponent(formData.need)}%0A*Localização:* ${encodeURIComponent(formData.provinceCountry)}%0A*Área:* ${encodeURIComponent(formData.fieldOfStudy)}%0A*Detalhes:* ${encodeURIComponent(formData.details)}`;
-    const whatsappUrl = `https://wa.me/244900000000?text=${text}`;
+    const whatsappUrl = `https://wa.me/?text=${text}`;
 
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
@@ -76,7 +76,7 @@ export const PlatformAgencyFormModal: React.FC<PlatformAgencyFormModalProps> = (
               </div>
               <h3 className="text-xl font-black text-[#1a1a1a]">Pedido Enviado com Sucesso!</h3>
               <p className="text-xs text-[#858586] max-w-md mx-auto">
-                A redireccionar para o suporte oficial via WhatsApp (+244 900 000 000). A nossa equipa entrará em contacto imediato.
+                O seu pedido foi preparado no WhatsApp. Confirme o envio na aplicação para concluir.
               </p>
               <button
                 onClick={() => {
@@ -179,12 +179,7 @@ export const PlatformAgencyFormModal: React.FC<PlatformAgencyFormModalProps> = (
                 />
               </div>
 
-              <div className="pt-2 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-1.5 text-[11px] text-[#858586]">
-                  <PhoneCall className="w-3.5 h-3.5 text-[#be462a]" />
-                  <span>Suporte Direto +244 900 000 000</span>
-                </div>
-
+              <div className="pt-2 flex items-center justify-end gap-3">
                 <button
                   type="submit"
                   className="bg-[#be462a] hover:bg-[#a53b21] text-white text-xs font-bold px-6 py-3 rounded-full transition-all shadow-md flex items-center gap-2 cursor-pointer"

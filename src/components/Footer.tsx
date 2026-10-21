@@ -1,5 +1,5 @@
 import React from 'react';
-import { Phone, Mail, MapPin, ArrowUp, Facebook, Twitter, Linkedin, Youtube } from 'lucide-react';
+import { Mail, MapPin, ArrowUp, Facebook, Twitter, Linkedin, Youtube } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   const scrollToTop = () => {
@@ -17,18 +17,6 @@ export const Footer: React.FC = () => {
                 Edunombre
               </span>
               <span className="text-[#be462a] text-2xl font-black ml-0.5">.</span>
-            </div>
-
-            <div className="space-y-2">
-              <div className="text-[11px] font-semibold text-[#1a1a1a]">
-                Tem dúvidas? Ligue para nós
-              </div>
-              <a
-                href="tel:+244900000000"
-                className="text-lg font-black text-[#be462a] font-outfit block hover:underline"
-              >
-                +244 900 000 000
-              </a>
             </div>
 
             <div className="space-y-1.5 pt-2 text-[#1a1a1a]">
