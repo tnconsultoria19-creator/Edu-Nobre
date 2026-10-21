@@ -73,8 +73,8 @@ const auditAction = (action: string): AuditLogEntry['action'] => {
   if (action === 'product_created' || action === 'order_requested' || action === 'admin_bootstrap') return 'Criado';
   if (action === 'product_updated') return 'Editado';
   if (action === 'product_archived' || action === 'user_blocked') return 'Eliminado';
-  if (action === 'product_approved') return 'Aprovado';
-  if (action === 'product_rejected') return 'Rejeitado';
+  if (action === 'product_approve' || action === 'product_approved') return 'Aprovado';
+  if (action === 'product_reject' || action === 'product_rejected') return 'Rejeitado';
   if (action === 'user_registered') return 'Registado';
   if (action === 'login') return 'Sessão iniciada';
   if (action === 'logout') return 'Sessão terminada';
