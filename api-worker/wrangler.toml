@@ -1,0 +1,12 @@
+name = "edu-nobre-api"
+main = "index.js"
+compatibility_date = "2026-10-21"
+workers_dev = true
+migrations_dir = "migrations"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "kwanzaa-nobre-db"
+database_id = "9afec9ce-788b-4ab5-9fbb-1342e461ad02"
+
+# Configure BOOTSTRAP_TOKEN as a Worker secret; never commit it to source control.
