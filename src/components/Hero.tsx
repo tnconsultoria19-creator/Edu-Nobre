@@ -30,9 +30,9 @@ const BANNERS = [
   },
   {
     id: 4,
-    title: (<>Aprenda. Pratique. <br /><span className="text-[#d8c29b] inline-block">Evolua.</span></>),
-    subtitle: 'Aceda a recursos de aprendizagem e formação digital num espaço organizado para estudantes e profissionais.',
-    ctaText: 'Descobrir Formações',
+    title: (<>Partilhe o seu conhecimento <br /><span className="text-[#d8c29b] inline-block">Ensine online</span></>),
+    subtitle: 'Transforme a sua experiência em formações e alcance novos alunos através da plataforma Edunombre.',
+    ctaText: 'Tornar-se Formador',
     image: 'https://img.magnific.com/free-photo/education-learning-concept-with-opening-book-textbook-old-library_1150-9085.jpg'
   }
 ];
@@ -55,7 +55,7 @@ export const Hero: React.FC<HeroProps> = ({ onExploreClick, onFormadorClick }) =
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white font-outfit leading-[1.15]">{banner.title}</h1>
           <p className="text-base sm:text-lg text-white/90 max-w-2xl leading-relaxed font-normal">{banner.subtitle}</p>
           <div className="flex flex-wrap items-center gap-4 pt-2">
-            <button onClick={banner.id === 3 ? onFormadorClick : onExploreClick} className="bg-[#be462a] hover:bg-[#a53b21] active:bg-[#8e321b] text-white text-sm font-semibold px-7 py-3 rounded-full shadow-sm hover:shadow-md transition-all flex items-center gap-2 cursor-pointer"><span>{banner.ctaText}</span><ArrowRight className="w-4 h-4" /></button>
+            <button onClick={banner.id === 4 ? onFormadorClick : onExploreClick} className="bg-[#be462a] hover:bg-[#a53b21] active:bg-[#8e321b] text-white text-sm font-semibold px-7 py-3 rounded-full shadow-sm hover:shadow-md transition-all flex items-center gap-2 cursor-pointer"><span>{banner.ctaText}</span><ArrowRight className="w-4 h-4" /></button>
           </div>
         </div>
         <button onClick={nextSlide} className="hidden md:flex items-center justify-center w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-colors cursor-pointer absolute right-4" aria-label="Próximo banner"><ChevronRight className="w-5 h-5" /></button>
