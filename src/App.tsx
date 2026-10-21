@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { HeaderTop } from './components/HeaderTop';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
@@ -17,8 +17,26 @@ import { AdminPortalModal } from './components/AdminPortalModal';
 import { UserLibraryModal } from './components/UserLibraryModal';
 
 import { MOCK_CATALOG_ITEMS } from './data/mockData';
-import { CatalogItem, Category, ContentType, CartItem, User } from './types';
+import { CatalogItem, Category, ContentType, CartItem, User, AuditLogEntry } from './types';
 import { BookOpen } from 'lucide-react';
+
+const readBrowserState = <T,>(key: string, fallback: T): T => {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const saved = window.localStorage.getItem(key);
+    return saved ? (JSON.parse(saved) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const writeBrowserState = (key: string, value: unknown) => {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Continue the current session if browser storage is disabled or full.
+  }
+};
 
 export function App() {
   // Global State
@@ -27,21 +45,22 @@ export function App() {
   const [user, setUser] = useState<User | null>(null);
 
   // Dynamic Catalog State
-  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>(MOCK_CATALOG_ITEMS);
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>(() => readBrowserState('edunombre_catalog_v1', MOCK_CATALOG_ITEMS));
 
   // Users List State for Admin Management
-  const [usersList, setUsersList] = useState<User[]>([
-    { id: 'u1', name: 'Admin Principal', email: 'admin@tnconsultoria.ao', role: 'Administrador' },
-    { id: 'u2', name: 'Sarah Fontenot', email: 'sarah@formadores.ao', role: 'Formador' },
-    { id: 'u3', name: 'António Silva', email: 'antonio@estudante.ao', role: 'Aluno' },
-    { id: 'u4', name: 'Erika Walker', email: 'erika@formadores.ao', role: 'Formador' },
-  ]);
+  const [usersList, setUsersList] = useState<User[]>(() => readBrowserState('edunombre_users_v1', [
+    { id: 'u1', name: 'Admin Principal', email: 'admin@tnconsultoria.ao', role: 'Administrador', status: 'Ativo' },
+    { id: 'u2', name: 'Sarah Fontenot', email: 'sarah@formadores.ao', role: 'Formador', status: 'Ativo' },
+    { id: 'u3', name: 'António Silva', email: 'antonio@estudante.ao', role: 'Aluno', status: 'Ativo' },
+    { id: 'u4', name: 'Erika Walker', email: 'erika@formadores.ao', role: 'Formador', status: 'Ativo' },
+  ]));
 
   // Purchased Items Library State
-  const [purchasedItems, setPurchasedItems] = useState<CatalogItem[]>([
+  const [purchasedItems, setPurchasedItems] = useState<CatalogItem[]>(() => readBrowserState('edunombre_library_v1', [
     MOCK_CATALOG_ITEMS[0],
     MOCK_CATALOG_ITEMS[1],
-  ]);
+  ]));
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => readBrowserState('edunombre_audit_v1', []));
 
   // Filters, Search & Sorting
   const [selectedCategory, setSelectedCategory] = useState<Category>('Todas');
@@ -52,8 +71,8 @@ export function App() {
   const [activeNavTab, setActiveNavTab] = useState('catalogo');
 
   // Interactive Collections
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [wishlistIds, setWishlistIds] = useState<string[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => readBrowserState('edunombre_cart_v1', []));
+  const [wishlistIds, setWishlistIds] = useState<string[]>(() => readBrowserState('edunombre_favourites_v1', []));
   const [showWishlistOnly, setShowWishlistOnly] = useState(false);
 
   // Modals & Drawers
@@ -64,6 +83,43 @@ export function App() {
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [formModalNeed, setFormModalNeed] = useState<string>('Comprar');
   const [quickViewItem, setQuickViewItem] = useState<CatalogItem | null>(null);
+
+  useEffect(() => writeBrowserState('edunombre_catalog_v1', catalogItems), [catalogItems]);
+  useEffect(() => writeBrowserState('edunombre_users_v1', usersList), [usersList]);
+  useEffect(() => writeBrowserState('edunombre_library_v1', purchasedItems), [purchasedItems]);
+  useEffect(() => writeBrowserState('edunombre_audit_v1', auditLogs), [auditLogs]);
+  useEffect(() => writeBrowserState('edunombre_cart_v1', cartItems), [cartItems]);
+  useEffect(() => writeBrowserState('edunombre_favourites_v1', wishlistIds), [wishlistIds]);
+
+  const recordAudit = (
+    action: AuditLogEntry['action'],
+    entityType: AuditLogEntry['entityType'],
+    description: string,
+    entityId?: string,
+    actor: User | null = user
+  ) => {
+    const entry: AuditLogEntry = {
+      id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      action, entityType, entityId, description,
+      actorName: actor?.name || 'Sistema',
+      actorEmail: actor?.email,
+      createdAt: new Date().toISOString(),
+    };
+    setAuditLogs((prev) => [entry, ...prev].slice(0, 1000));
+  };
+
+  const updateStoredAccount = (email: string, changes: Partial<User> | null) => {
+    try {
+      const key = 'edunombre_accounts_v1';
+      const saved = JSON.parse(window.localStorage.getItem(key) || '[]') as Array<{ user: User; passwordDigest: string }>;
+      const next = changes === null
+        ? saved.filter((account) => account.user.email.toLowerCase() !== email.toLowerCase())
+        : saved.map((account) => account.user.email.toLowerCase() === email.toLowerCase() ? { ...account, user: { ...account.user, ...changes } } : account);
+      window.localStorage.setItem(key, JSON.stringify(next));
+    } catch {
+      // In production, status/permission checks must also be enforced server-side.
+    }
+  };
 
   // Comprehensive Filter & Sorting Logic (Only Published items show in store)
   const filteredCatalog = useMemo(() => {
@@ -114,36 +170,75 @@ export function App() {
   // Catalog Item Handlers (Admin / Creator)
   const handleAddItem = (newItem: CatalogItem) => {
     setCatalogItems((prev) => [newItem, ...prev]);
+    recordAudit('Criado', 'Conteúdo', `Criou “${newItem.title}” (${newItem.approvalStatus || 'Publicado'}).`, newItem.id);
   };
 
   const handleUpdateItem = (updatedItem: CatalogItem) => {
-    setCatalogItems((prev) =>
-      prev.map((i) => (i.id === updatedItem.id ? updatedItem : i))
-    );
+    setCatalogItems((prev) => prev.map((i) => (i.id === updatedItem.id ? updatedItem : i)));
+    recordAudit('Editado', 'Conteúdo', `Actualizou “${updatedItem.title}”.`, updatedItem.id);
   };
 
   const handleDeleteItem = (id: string) => {
+    const removed = catalogItems.find((item) => item.id === id);
     setCatalogItems((prev) => prev.filter((i) => i.id !== id));
+    setCartItems((prev) => prev.filter((item) => item.item.id !== id));
+    setWishlistIds((prev) => prev.filter((itemId) => itemId !== id));
+    if (removed) recordAudit('Eliminado', 'Conteúdo', `Eliminou “${removed.title}”.`, id);
   };
 
   const handleApproveItem = (id: string) => {
-    setCatalogItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, approvalStatus: 'Publicado' } : i))
-    );
+    const item = catalogItems.find((entry) => entry.id === id);
+    setCatalogItems((prev) => prev.map((i) => (i.id === id ? { ...i, approvalStatus: 'Publicado', rejectionReason: undefined } : i)));
+    if (item) recordAudit('Aprovado', 'Conteúdo', `Aprovou e publicou “${item.title}”.`, id);
   };
 
   const handleRejectItem = (id: string, reason: string) => {
-    setCatalogItems((prev) =>
-      prev.map((i) =>
-        i.id === id ? { ...i, approvalStatus: 'Rejeitado', rejectionReason: reason } : i
-      )
-    );
+    const item = catalogItems.find((entry) => entry.id === id);
+    setCatalogItems((prev) => prev.map((i) => i.id === id ? { ...i, approvalStatus: 'Rejeitado', rejectionReason: reason } : i));
+    if (item) recordAudit('Rejeitado', 'Conteúdo', `Rejeitou “${item.title}”. Motivo: ${reason || 'Não indicado'}`, id);
   };
 
   const handleUpdateUserRole = (userId: string, role: User['role']) => {
-    setUsersList((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, role } : u))
-    );
+    const target = usersList.find((u) => u.id === userId);
+    if (!target) return;
+    setUsersList((prev) => prev.map((u) => u.id === userId ? { ...u, role, status: role === 'Formador' && u.status !== 'Ativo' ? 'Pendente' : u.status } : u));
+    updateStoredAccount(target.email, { role });
+    recordAudit('Papel alterado', 'Utilizador', `Alterou o papel de ${target.name} para ${role}.`, userId);
+  };
+
+  const handleUpdateUserStatus = (userId: string, status: NonNullable<User['status']>) => {
+    const target = usersList.find((u) => u.id === userId);
+    if (!target || (target.role === 'Administrador' && status !== 'Ativo')) return;
+    setUsersList((prev) => prev.map((u) => u.id === userId ? { ...u, status } : u));
+    updateStoredAccount(target.email, { status });
+    if (user?.id === userId) setUser({ ...user, status });
+    recordAudit('Estado alterado', 'Utilizador', `Alterou o estado de ${target.name} para ${status}.`, userId);
+  };
+
+  const handleRemoveUser = (userId: string) => {
+    const target = usersList.find((u) => u.id === userId);
+    if (!target || target.role === 'Administrador' || user?.id === userId) return;
+    setUsersList((prev) => prev.filter((u) => u.id !== userId));
+    updateStoredAccount(target.email, null);
+    recordAudit('Eliminado', 'Utilizador', `Eliminou a conta de ${target.name} (${target.email}).`, userId);
+  };
+
+  const handleSuccessfulLogin = (signedInUser: User) => {
+    const existing = usersList.find((u) => u.email.toLowerCase() === signedInUser.email.toLowerCase());
+    const finalUser = existing ? { ...signedInUser, role: existing.role, status: existing.status || signedInUser.status } : signedInUser;
+    if (finalUser.status === 'Bloqueado') return;
+    setUser(finalUser);
+    if (!existing) {
+      setUsersList((prev) => [finalUser, ...prev]);
+      recordAudit('Registado', 'Utilizador', `Novo utilizador registado como ${finalUser.role}: ${finalUser.name}.`, finalUser.id, finalUser);
+    } else {
+      recordAudit('Sessão iniciada', 'Sessão', `Iniciou sessão: ${finalUser.email}.`, finalUser.id, finalUser);
+    }
+  };
+
+  const handleLogout = () => {
+    if (user) recordAudit('Sessão terminada', 'Sessão', `Terminou sessão: ${user.email}.`, user.id, user);
+    setUser(null);
   };
 
   // Cart / Direct Purchase Handlers (Kubeta.ao style)
@@ -186,7 +281,7 @@ export function App() {
       <HeaderTop
         user={user}
         onOpenAuth={() => setAuthOpen(true)}
-        onLogout={() => setUser(null)}
+        onLogout={handleLogout}
         currency={currency}
         setCurrency={setCurrency}
         language={language}
@@ -337,7 +432,7 @@ export function App() {
       <AuthModal
         isOpen={authOpen}
         onClose={() => setAuthOpen(false)}
-        onLoginSuccess={(u) => setUser(u)}
+        onLoginSuccess={handleSuccessfulLogin}
       />
 
       <div id="aderir">
@@ -368,6 +463,9 @@ export function App() {
         setCurrentUser={setUser}
         usersList={usersList}
         onUpdateUserRole={handleUpdateUserRole}
+        onUpdateUserStatus={handleUpdateUserStatus}
+        onRemoveUser={handleRemoveUser}
+        auditLogs={auditLogs}
       />
 
       <UserLibraryModal

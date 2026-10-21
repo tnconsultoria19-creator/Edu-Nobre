@@ -122,3 +122,15 @@ export interface ContactFormData {
   fieldOfStudy: string;
   details: string;
 }
+
+
+export interface AuditLogEntry {
+  id: string;
+  action: 'Criado' | 'Editado' | 'Eliminado' | 'Aprovado' | 'Rejeitado' | 'Registado' | 'Papel alterado' | 'Estado alterado' | 'Sessão iniciada' | 'Sessão terminada';
+  entityType: 'Conteúdo' | 'Utilizador' | 'Sessão';
+  entityId?: string;
+  description: string;
+  actorName: string;
+  actorEmail?: string;
+  createdAt: string;
+}
