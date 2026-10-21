@@ -241,27 +241,31 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
             </div>
           </div>
 
-          {/* Persona / Account Selector */}
-          <div className="flex items-center gap-2 bg-slate-800/80 p-1.5 rounded-2xl border border-slate-700">
-            <span className="text-[11px] text-slate-400 font-bold px-2 hidden sm:inline">Pré-visualização de perfil:</span>
-            {demoUsers.map((u) => (
-              <button
-                key={u.id}
-                onClick={() => {
-                  setCurrentUser(u);
-                  if (u.role === 'Administrador') setActiveTab('approvals');
-                  else setActiveTab('creator');
-                }}
-                className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
-                  currentUser?.email === u.email
-                    ? 'bg-[#185a7d] text-white shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
-                }`}
-              >
-                <span>{u.role === 'Administrador' ? '👑 Admin' : u.role === 'Formador' ? '✍️ Criador' : '🎓 Aluno'}</span>
-              </button>
-            ))}
-          </div>
+          {/* Demo persona selector must never be exposed in a public production build. */}
+          {import.meta.env.DEV && (
+            <div className="flex flex-col gap-1.5 items-end">
+              <span className="text-[10px] text-amber-300 font-semibold">Pré-visualização local — sem autenticação real</span>
+              <div className="flex items-center gap-2 bg-slate-800/80 p-1.5 rounded-2xl border border-slate-700">
+                {demoUsers.map((u) => (
+                  <button
+                    key={u.id}
+                    onClick={() => {
+                      setCurrentUser(u);
+                      if (u.role === 'Administrador') setActiveTab('approvals');
+                      else setActiveTab('creator');
+                    }}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+                      currentUser?.email === u.email
+                        ? 'bg-[#185a7d] text-white shadow-sm'
+                        : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+                    }`}
+                  >
+                    <span>{u.role === 'Administrador' ? 'Admin preview' : u.role === 'Formador' ? 'Criador preview' : 'Aluno preview'}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Close button */}
           <button
