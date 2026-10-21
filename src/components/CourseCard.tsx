@@ -1,6 +1,6 @@
 import React from 'react';
 import { CatalogItem } from '../types';
-import { ShoppingBag, Star, Zap } from 'lucide-react';
+import { ShoppingBag, Star, Zap, Heart } from 'lucide-react';
 
 interface CourseCardProps {
   item: CatalogItem;
@@ -15,6 +15,8 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   item,
   onAddToCart,
   onQuickView,
+  onToggleWishlist,
+  isWishlisted = false,
   currency = 'AOA',
 }) => {
   // Format price display in AOA / Kwanzas (like Kubeta.ao)
@@ -38,7 +40,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       {/* 1. Full-Bleed Edge-to-Edge Product Image (0px padding, no grey box, full width) */}
       <div 
         onClick={() => onQuickView && onQuickView(item)}
-        className="relative w-full aspect-[16/10] sm:aspect-[4/3] overflow-hidden cursor-pointer shrink-0 bg-[#e2e8f0]"
+        className="relative w-full aspect-[16/10] sm:aspect-[4/3] overflow-hidden cursor-pointer shrink-0 bg-[#f3eee8]"
       >
         <img
           src={item.image}
@@ -46,6 +48,12 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 block"
           referrerPolicy="no-referrer"
         />
+
+        {onToggleWishlist && (
+          <button type="button" aria-label={isWishlisted ? 'Remover dos favoritos' : 'Adicionar aos favoritos'} title={isWishlisted ? 'Remover dos favoritos' : 'Adicionar aos favoritos'} onClick={(event) => { event.stopPropagation(); onToggleWishlist(item); }} className="absolute top-3 right-3 z-10 rounded-full bg-white/95 p-2 text-[#574f49] shadow-sm transition-colors hover:text-[#be462a]">
+            <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-current text-[#be462a]' : ''}`} />
+          </button>
+        )}
 
         {/* Top-Left Badge (e.g. Hot) */}
         {item.badge && (
@@ -60,25 +68,21 @@ export const CourseCard: React.FC<CourseCardProps> = ({
         <div>
           {/* Tags */}
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
-            <span className="text-[10px] font-bold text-[#185a7d] bg-[#d5e4ec] px-2 py-0.5 rounded-md uppercase tracking-wider">
-              {item.contentType}
-            </span>
-            <span className="text-[10px] font-bold text-[#e05822] bg-[#fcece6] px-2 py-0.5 rounded-md uppercase tracking-wider">
-              {item.category}
-            </span>
+            <span className="text-[11px] font-semibold text-[#655b54] bg-[#f4f0eb] px-2 py-1 rounded-md tracking-wide">{item.contentType}</span>
+            <span className="text-[11px] font-semibold text-[#8c3a27] bg-[#f8eee8] px-2 py-1 rounded-md tracking-wide">{item.category}</span>
           </div>
 
           {/* Title */}
           <h3
             onClick={() => onQuickView && onQuickView(item)}
-            className="text-base font-bold text-[#0c2340] font-outfit line-clamp-2 leading-snug mb-2 group-hover:text-[#be462a] transition-colors cursor-pointer"
+            className="text-base font-bold text-[#26211e] font-outfit line-clamp-2 leading-snug mb-2 group-hover:text-[#be462a] transition-colors cursor-pointer"
           >
             {item.title}
           </h3>
 
           {/* Price */}
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-base font-black text-[#e05822]">
+            <span className="text-base font-bold text-[#8c3a27]">
               {displayPrice}
             </span>
             {item.price > 0 && (
@@ -98,13 +102,13 @@ export const CourseCard: React.FC<CourseCardProps> = ({
                 alt={item.author.name}
                 className="w-6 h-6 rounded-full object-cover shrink-0"
               />
-              <span className="text-xs text-[#475569] font-medium truncate">
+              <span className="text-[13px] text-[#625a54] font-medium truncate">
                 (Author) {item.author.name}
               </span>
             </div>
 
             {/* Stars Rating */}
-            <div className="flex items-center gap-0.5 text-[#ff7a00] shrink-0">
+            <div className="flex items-center gap-0.5 text-[#b89b66] shrink-0">
               {[...Array(5)].map((_, i) => (
                 <Star
                   key={i}
@@ -123,7 +127,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           {/* 3. Direct Purchase Action Button */}
           <button
             onClick={() => onAddToCart(item)}
-            className="w-full bg-[#d5e4ec] hover:bg-[#185a7d] hover:text-white active:bg-[#12415b] text-[#185a7d] text-xs sm:text-sm font-bold py-3 px-4 rounded-full flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs"
+            className="w-full bg-[#f4eee8] hover:bg-[#be462a] hover:text-white active:bg-[#8c301a] text-[#7b3524] text-sm font-semibold py-3 px-4 rounded-full flex items-center justify-center gap-2 cursor-pointer transition-colors"
           >
             {item.price === 0 ? (
               <>

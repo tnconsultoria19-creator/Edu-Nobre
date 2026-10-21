@@ -24,13 +24,7 @@ export function App() {
   // Global State
   const [currency, setCurrency] = useState('AOA');
   const [language, setLanguage] = useState('Português (AO)');
-  const [user, setUser] = useState<User | null>({
-    id: 'u1',
-    name: 'Admin Principal',
-    email: 'admin@tnconsultoria.ao',
-    role: 'Administrador',
-    avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=200&q=80',
-  });
+  const [user, setUser] = useState<User | null>(null);
 
   // Dynamic Catalog State
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>(MOCK_CATALOG_ITEMS);
@@ -60,6 +54,7 @@ export function App() {
   // Interactive Collections
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [wishlistIds, setWishlistIds] = useState<string[]>([]);
+  const [showWishlistOnly, setShowWishlistOnly] = useState(false);
 
   // Modals & Drawers
   const [cartOpen, setCartOpen] = useState(false);
@@ -77,6 +72,7 @@ export function App() {
       if (item.approvalStatus && item.approvalStatus !== 'Publicado') {
         return false;
       }
+      if (showWishlistOnly && !wishlistIds.includes(item.id)) return false;
       // Category match
       if (selectedCategory !== 'Todas' && item.category !== selectedCategory) {
         return false;
@@ -113,7 +109,7 @@ export function App() {
       if (sortBy === 'rating') return b.rating - a.rating;
       return (b.ratingCount || 0) - (a.ratingCount || 0); // popular
     });
-  }, [catalogItems, selectedCategory, selectedContentType, priceFilter, sortBy, searchQuery]);
+  }, [catalogItems, selectedCategory, selectedContentType, priceFilter, sortBy, searchQuery, showWishlistOnly, wishlistIds]);
 
   // Catalog Item Handlers (Admin / Creator)
   const handleAddItem = (newItem: CatalogItem) => {
@@ -205,6 +201,7 @@ export function App() {
         onOpenWishlist={() => {
           setSelectedCategory('Todas');
           setSelectedContentType('Todas');
+          setShowWishlistOnly((current) => !current);
           const elem = document.getElementById('catalogo-grid');
           if (elem) elem.scrollIntoView({ behavior: 'smooth' });
         }}
@@ -234,15 +231,10 @@ export function App() {
       <div 
         className="flex-1 bg-cover bg-center bg-fixed"
         style={{
-          backgroundImage: `linear-gradient(rgba(248, 250, 252, 0.25), rgba(248, 250, 252, 0.35)), url('https://images.pexels.com/photos/26574661/pexels-photo-26574661.jpeg?auto=format&fit=crop&w=1920&q=85')`,
+          backgroundImage: 'linear-gradient(rgba(252, 249, 246, 0.94), rgba(252, 249, 246, 0.96))',
         }}
       >
         {/* Top Categories Showcase */}
-        <CategoryShowcase
-          selectedCategory={selectedCategory}
-          setSelectedCategory={setSelectedCategory}
-        />
-
         {/* Catalog Grid & Filters Section */}
         <section id="catalogo-grid" className="py-6 sm:py-10">
           <div className="max-w-7xl mx-auto px-4 sm:px-8 space-y-6">
@@ -273,6 +265,7 @@ export function App() {
                   onClick={() => {
                     setSelectedCategory('Todas');
                     setSelectedContentType('Todas');
+                    setShowWishlistOnly(false);
                     setPriceFilter('all');
                     setSearchQuery('');
                   }}
@@ -287,9 +280,9 @@ export function App() {
                   <CourseCard
                     key={item.id}
                     item={item}
-                    onAddToCart={handleAddToCart}
-                    onToggleWishlist={handleToggleWishlist}
-                    isWishlisted={wishlistIds.includes(item.id)}
+                    onAddToCart={(i) => (user ? handleAddToCart(i) : setAuthOpen(true))}
+                    onToggleWishlist={user ? handleToggleWishlist : undefined}
+                    isWishlisted={user ? wishlistIds.includes(item.id) : false}
                     onQuickView={(i) => setQuickViewItem(i)}
                     currency={currency}
                   />
@@ -306,6 +299,15 @@ export function App() {
 
         {/* 5. Teachers & Authors Section (Faithful Replica of Uploaded Image) */}
         <TeachersSection />
+
+        <CategoryShowcase
+          catalogItems={catalogItems}
+          selectedCategory={selectedCategory}
+          setSelectedCategory={(category) => {
+            setShowWishlistOnly(false);
+            setSelectedCategory(category);
+          }}
+        />
 
         {/* 6. Advertising Card Section (Sponsored / Partner Showcase) */}
         <AdBannerSection onAdClick={() => handleOpenForm('Parceria')} />

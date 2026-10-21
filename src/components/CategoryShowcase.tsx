@@ -1,176 +1,64 @@
 import React, { useRef } from 'react';
-import { Category } from '../types';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { Category, CatalogItem } from '../types';
+import { ArrowLeft, ArrowRight, GraduationCap } from 'lucide-react';
 
 interface CategoryShowcaseProps {
+  catalogItems: CatalogItem[];
   selectedCategory: Category;
   setSelectedCategory: (cat: Category) => void;
 }
-
-interface TopCategoryItem {
+interface CourseCategory {
   id: string;
   name: string;
   categoryKey: Category;
-  count: number;
-  numberBadge: string;
   coverImage: string;
 }
+const COURSE_CATEGORIES: CourseCategory[] = [
+  { id: 'communication', name: 'Comunicação & Oratória', categoryKey: 'Comunicação', coverImage: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=600&auto=format&fit=crop&q=80' },
+  { id: 'marketing', name: 'Marketing & Vendas', categoryKey: 'Marketing & vendas', coverImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&auto=format&fit=crop&q=80' },
+  { id: 'finance', name: 'Finanças', categoryKey: 'Finanças', coverImage: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&auto=format&fit=crop&q=80' },
+  { id: 'children', name: 'Kandengues', categoryKey: 'Kandengues', coverImage: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=600&auto=format&fit=crop&q=80' },
+  { id: 'design', name: 'Beleza & Decoração', categoryKey: 'Beleza & Decoração', coverImage: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=600&auto=format&fit=crop&q=80' },
+];
 
-export const CategoryShowcase: React.FC<CategoryShowcaseProps> = ({
-  selectedCategory,
-  setSelectedCategory,
-}) => {
+export const CategoryShowcase: React.FC<CategoryShowcaseProps> = ({ catalogItems, selectedCategory, setSelectedCategory }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  const categoriesData: TopCategoryItem[] = [
-    {
-      id: '1',
-      name: 'Romance Books',
-      categoryKey: 'Desenvolvimento pessoal',
-      count: 80,
-      numberBadge: '01',
-      coverImage: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&auto=format&fit=crop&q=80',
-    },
-    {
-      id: '2',
-      name: 'Design Low Book',
-      categoryKey: 'Marketing & vendas',
-      count: 6,
-      numberBadge: '02',
-      coverImage: 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=400&auto=format&fit=crop&q=80',
-    },
-    {
-      id: '3',
-      name: 'Safe Home',
-      categoryKey: 'Direito',
-      count: 5,
-      numberBadge: '03',
-      coverImage: 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400&auto=format&fit=crop&q=80',
-    },
-    {
-      id: '4',
-      name: 'Grow Flower',
-      categoryKey: 'Finanças',
-      count: 7,
-      numberBadge: '04',
-      coverImage: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&auto=format&fit=crop&q=80',
-    },
-    {
-      id: '5',
-      name: 'Adventure Book',
-      categoryKey: 'Comunicação',
-      count: 4,
-      numberBadge: '05',
-      coverImage: 'https://images.unsplash.com/photo-1532012164546-f432f2e37b73?w=400&auto=format&fit=crop&q=80',
-    },
-    {
-      id: '6',
-      name: 'TI & Software',
-      categoryKey: 'TI & Software',
-      count: 14,
-      numberBadge: '06',
-      coverImage: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&auto=format&fit=crop&q=80',
-    },
-    {
-      id: '7',
-      name: 'Kandengues',
-      categoryKey: 'Kandengues',
-      count: 18,
-      numberBadge: '07',
-      coverImage: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&auto=format&fit=crop&q=80',
-    },
-  ];
-
+  const categoriesData = COURSE_CATEGORIES.map((category) => ({
+    ...category,
+    count: catalogItems.filter((item) => item.contentType === 'Cursos Online' && item.category === category.categoryKey && (!item.approvalStatus || item.approvalStatus === 'Publicado')).length,
+  })).filter((category) => category.count > 0);
   const handleScroll = (direction: 'left' | 'right') => {
-    if (scrollContainerRef.current) {
-      const scrollAmount = direction === 'left' ? -260 : 260;
-      scrollContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-    }
+    scrollContainerRef.current?.scrollBy({ left: direction === 'left' ? -280 : 280, behavior: 'smooth' });
   };
-
   const handleSelect = (catKey: Category) => {
     setSelectedCategory(selectedCategory === catKey ? 'Todas' : catKey);
-    const elem = document.getElementById('catalogo-grid');
-    if (elem) {
-      elem.scrollIntoView({ behavior: 'smooth' });
-    }
+    document.getElementById('catalogo-grid')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
-    <section id="catalogo" className="py-10 sm:py-14">
+    <section id="categorias-cursos" className="py-12 sm:py-14 bg-[#fcf9f6] border-y border-[#e6ded6]">
       <div className="max-w-7xl mx-auto px-4 sm:px-8 space-y-6">
-        {/* Section Header with Left/Right Navigation Arrows */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0c2340] font-outfit tracking-tight">
-              Top Categorias
-            </h2>
-            <p className="text-xs sm:text-sm text-[#5e6d77] mt-1">
-              Explore os tópicos e livros mais procurados por estudantes e profissionais
-            </p>
+            <div className="flex items-center gap-2 text-[#8c3a27] text-sm font-semibold mb-1"><GraduationCap className="w-4 h-4" /><span>Cursos</span></div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] font-outfit tracking-tight">Cursos por Categoria</h2>
+            <p className="text-sm sm:text-base text-[#6f6862] mt-1">Explore as áreas de formação e encontre o próximo curso para si.</p>
           </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleScroll('left')}
-              className="w-9 h-9 rounded-full bg-white hover:bg-[#185a7d] text-[#0c2340] hover:text-white flex items-center justify-center shadow-sm transition-all cursor-pointer"
-              aria-label="Previous Categories"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => handleScroll('right')}
-              className="w-9 h-9 rounded-full bg-white hover:bg-[#185a7d] text-[#0c2340] hover:text-white flex items-center justify-center shadow-sm transition-all cursor-pointer"
-              aria-label="Next Categories"
-            >
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
+          {categoriesData.length > 3 && <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => handleScroll('left')} className="w-9 h-9 rounded-full bg-white hover:bg-[#f4eee8] text-[#574f49] border border-[#e6ded6] flex items-center justify-center transition-colors cursor-pointer" aria-label="Categorias anteriores"><ArrowLeft className="w-4 h-4" /></button>
+            <button onClick={() => handleScroll('right')} className="w-9 h-9 rounded-full bg-white hover:bg-[#f4eee8] text-[#574f49] border border-[#e6ded6] flex items-center justify-center transition-colors cursor-pointer" aria-label="Mais categorias"><ArrowRight className="w-4 h-4" /></button>
+          </div>}
         </div>
-
-        {/* Categories Carousel */}
-        <div
-          ref={scrollContainerRef}
-          className="flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar py-3 px-1"
-        >
-          {categoriesData.map((cat) => {
-            const isSelected = selectedCategory === cat.categoryKey;
-            return (
-              <div
-                key={cat.id}
-                onClick={() => handleSelect(cat.categoryKey)}
-                className={`group flex flex-col items-center bg-white rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer shrink-0 w-[160px] sm:w-[180px] ${
-                  isSelected ? 'ring-2 ring-[#be462a] shadow-md' : ''
-                }`}
-              >
-                {/* Book Cover Container */}
-                <div className="w-full aspect-[3/4] rounded-xl bg-[#f4f6f8] flex items-center justify-center p-3 mb-3 overflow-hidden relative group-hover:bg-[#ebf1f5] transition-colors">
-                  <span className="absolute top-2 left-2 text-[10px] font-bold text-[#8c9ba5] bg-white/80 px-2 py-0.5 rounded-md">
-                    {cat.numberBadge}
-                  </span>
-                  <img
-                    src={cat.coverImage}
-                    alt={cat.name}
-                    className="h-28 sm:h-32 w-auto max-w-full object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-300"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-
-                {/* Category Info */}
-                <div className="text-center w-full">
-                  <h3
-                    className={`text-xs sm:text-sm font-bold truncate transition-colors ${
-                      isSelected ? 'text-[#be462a]' : 'text-[#0c2340] group-hover:text-[#185a7d]'
-                    }`}
-                  >
-                    {cat.name}
-                  </h3>
-                  <span className="text-[11px] text-[#8c9ba5] font-medium block mt-0.5">
-                    {cat.count} títulos
-                  </span>
-                </div>
+        <div ref={scrollContainerRef} className="flex items-stretch gap-4 overflow-x-auto no-scrollbar py-1">
+          {categoriesData.map((category) => {
+            const isSelected = selectedCategory === category.categoryKey;
+            return <button key={category.id} type="button" onClick={() => handleSelect(category.categoryKey)} className={`group text-left bg-white rounded-xl border overflow-hidden transition-all shrink-0 w-[220px] sm:w-[245px] ${isSelected ? 'border-[#be462a] ring-1 ring-[#be462a]/25' : 'border-[#e6ded6] hover:border-[#d4c4b8]'}`}>
+              <div className="w-full aspect-[5/3] bg-[#f3eee8] overflow-hidden"><img src={category.coverImage} alt={category.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" referrerPolicy="no-referrer" /></div>
+              <div className="p-4">
+                <h3 className={`text-sm sm:text-base font-semibold leading-snug ${isSelected ? 'text-[#8c3a27]' : 'text-[#26211e]'}`}>{category.name}</h3>
+                <p className="text-sm text-[#746b65] mt-1">{category.count} {category.count === 1 ? 'curso' : 'cursos'}</p>
               </div>
-            );
+            </button>;
           })}
         </div>
       </div>

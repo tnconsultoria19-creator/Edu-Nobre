@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Heart, ShoppingBag, Menu, X, ChevronRight, ShieldCheck, BookOpen } from 'lucide-react';
+import { Search, Heart, ShoppingBag, Menu, X, ChevronRight, ShieldCheck, BookOpen, House } from 'lucide-react';
 import { CartItem, CatalogItem, User } from '../types';
 
 interface HeaderProps {
@@ -57,10 +57,9 @@ export const Header: React.FC<HeaderProps> = ({
   // Navigation options
   const navItems = [
     { label: 'Início', id: 'inicio' },
-    { label: 'Cursos & Livros', id: 'catalogo-grid' },
+    { label: 'Cursos', id: 'catalogo-grid' },
     { label: 'Formadores', id: 'formadores' },
     { label: 'Downloads', id: 'downloads' },
-    { label: 'Instituições', id: 'aderir' },
   ];
 
   const handleNavClick = (id: string) => {
@@ -68,6 +67,10 @@ export const Header: React.FC<HeaderProps> = ({
     setMobileMenuOpen(false);
 
     // Scroll to relevant section if present (or handle logic)
+    if (id === 'inicio') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     const elem = document.getElementById(id);
     if (elem) {
       elem.scrollIntoView({ behavior: 'smooth' });
@@ -93,18 +96,20 @@ export const Header: React.FC<HeaderProps> = ({
         </a>
 
         {/* Desktop Navigation - 3 Items */}
-        <nav className="hidden md:flex items-center gap-8 text-sm font-bold text-[#1a1a1a]">
+        <nav className="hidden md:flex items-center gap-6 text-[15px] font-semibold text-[#1a1a1a]">
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => handleNavClick(item.id)}
+              aria-label={item.id === 'inicio' ? 'Início' : item.label}
+              title={item.id === 'inicio' ? 'Início' : item.label}
               className={`transition-colors relative py-1 cursor-pointer ${
                 activeNavTab === item.id
                   ? 'text-[#be462a] font-extrabold'
                   : 'text-[#1a1a1a] hover:text-[#be462a]'
               }`}
             >
-              {item.label}
+              {item.id === 'inicio' ? <House className="w-5 h-5" aria-hidden="true" /> : item.label}
               {activeNavTab === item.id && (
                 <span className="absolute bottom-0 left-0 w-full h-[2.5px] bg-[#be462a] rounded-full" />
               )}
@@ -124,7 +129,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
                 placeholder="Pesquisar formação..."
-                className="w-full bg-[#f7f3ee] border border-[#e2d5c8] focus:border-[#be462a] rounded-full py-1.5 pl-4 pr-9 text-xs text-[#1a1a1a] focus:outline-none transition-all placeholder:text-[#858586]"
+                className="w-full bg-[#f7f3ee] border border-[#e2d5c8] focus:border-[#be462a] rounded-full py-1.5 pl-4 pr-9 text-sm text-[#1a1a1a] focus:outline-none transition-all placeholder:text-[#858586]"
               />
               <button className="absolute right-2.5 text-[#858586] hover:text-[#be462a]">
                 <Search className="w-4 h-4" />
@@ -167,60 +172,27 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* Wishlist Icon */}
-          <button
-            onClick={onOpenWishlist}
-            className="relative p-2 text-[#1a1a1a] hover:text-[#be462a] transition-colors cursor-pointer"
-            title="Lista de Desejos"
-          >
-            <Heart className="w-5 h-5" />
-            {wishlistCount > 0 && (
-              <span className="absolute top-0 right-0 bg-[#be462a] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                {wishlistCount}
-              </span>
-            )}
-          </button>
-
-          {/* Cart Icon */}
-          <button
-            onClick={onOpenCart}
-            className="relative p-2 text-[#1a1a1a] hover:text-[#be462a] transition-colors cursor-pointer flex items-center gap-1.5"
-            title="Carrinho de Compras"
-          >
-            <div className="relative">
-              <ShoppingBag className="w-5 h-5" />
-              {totalCartCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-[#be462a] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                  {totalCartCount}
-                </span>
-              )}
-            </div>
-            {totalCartPrice > 0 && (
-              <span className="hidden xl:inline text-xs font-bold text-[#be462a]">
-                {totalCartPrice.toLocaleString('pt-AO')} AOA
-              </span>
-            )}
-          </button>
+          {currentUser && (
+            <>
+              <button onClick={onOpenWishlist} className="relative p-2 text-[#1a1a1a] hover:text-[#be462a] transition-colors cursor-pointer" title="Favoritos" aria-label="Favoritos">
+                <Heart className="w-5 h-5" />
+                {wishlistCount > 0 && <span className="absolute top-0 right-0 bg-[#be462a] text-white text-[11px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{wishlistCount}</span>}
+              </button>
+              <button onClick={onOpenCart} className="relative p-2 text-[#1a1a1a] hover:text-[#be462a] transition-colors cursor-pointer flex items-center gap-1.5" title="Carrinho de Compras" aria-label="Carrinho de Compras">
+                <div className="relative">
+                  <ShoppingBag className="w-5 h-5" />
+                  {totalCartCount > 0 && <span className="absolute -top-1.5 -right-1.5 bg-[#be462a] text-white text-[11px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{totalCartCount}</span>}
+                </div>
+                {totalCartPrice > 0 && <span className="hidden xl:inline text-sm font-semibold text-[#be462a]">{totalCartPrice.toLocaleString('pt-AO')} AOA</span>}
+              </button>
+            </>
+          )}
 
           {/* User Library CTA */}
-          <button
-            onClick={onOpenUserLibrary}
-            className="hidden lg:inline-flex items-center gap-1.5 bg-[#f4f6f8] hover:bg-[#e2e8f0] text-[#0c2340] text-xs font-bold px-3 py-2 rounded-full transition-all cursor-pointer border border-slate-200"
-            title="Ver conteúdos comprados e descarregados"
-          >
-            <BookOpen className="w-3.5 h-3.5 text-[#185a7d]" />
-            <span>Adquiridos</span>
-          </button>
+          {currentUser && <button onClick={onOpenUserLibrary} className="hidden lg:inline-flex items-center gap-1.5 bg-[#f6f2ed] hover:bg-[#eee5dc] text-[#51463e] text-sm font-semibold px-3 py-2 rounded-full transition-all cursor-pointer border border-[#e6ded6]" title="Ver conteúdos comprados e descarregados"><BookOpen className="w-4 h-4 text-[#8c3a27]" /><span>Adquiridos</span></button>}
 
           {/* Admin & Portal CTA */}
-          <button
-            onClick={onOpenAdminPortal}
-            className="inline-flex items-center gap-1.5 bg-[#0c2340] hover:bg-[#185a7d] text-white text-xs font-bold px-3.5 py-2 rounded-full transition-all shadow-sm cursor-pointer"
-            title="Aceder ao Painel de Moderação, Moderação e Criadores"
-          >
-            <ShieldCheck className="w-4 h-4 text-amber-400" />
-            <span className="hidden sm:inline">Admin / Criador</span>
-          </button>
+          {currentUser?.role === 'Administrador' && <button onClick={onOpenAdminPortal} className="inline-flex items-center gap-1.5 bg-[#28231f] hover:bg-[#403831] text-white text-sm font-semibold px-3.5 py-2 rounded-full transition-all shadow-sm cursor-pointer" title="Abrir painel de administração"><ShieldCheck className="w-4 h-4 text-[#d8c29b]" /><span className="hidden sm:inline">Admin</span></button>}
 
           {/* Account Login CTA */}
           <button
@@ -266,8 +238,8 @@ export const Header: React.FC<HeaderProps> = ({
                     : 'text-[#1a1a1a] hover:bg-gray-50'
                 }`}
               >
-                <span>{item.label}</span>
-                <ChevronRight className="w-4 h-4 text-[#858586]" />
+                <span>{item.id === 'inicio' ? <House className="w-5 h-5" aria-hidden="true" /> : item.label}</span>
+                {item.id !== 'inicio' && <ChevronRight className="w-4 h-4 text-[#858586]" />}
               </button>
             ))}
           </div>

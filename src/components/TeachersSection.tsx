@@ -1,5 +1,4 @@
 import React from 'react';
-import { Award } from 'lucide-react';
 
 interface Instructor {
   id: string;
@@ -40,16 +39,11 @@ export const TeachersSection: React.FC = () => {
     <section id="formadores" className="py-16 sm:py-20 flex flex-col justify-center items-center space-y-10">
       {/* Elegant Section Header with Visual Divider */}
       <div className="text-center max-w-2xl mx-auto px-4 space-y-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#185a7d]/10 text-[#185a7d] text-xs font-bold uppercase tracking-wider">
-          <Award className="w-3.5 h-3.5" />
-          Especialistas & Mentores
-        </div>
-        
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#0c2340] font-outfit tracking-tight">
+<h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#0c2340] font-outfit tracking-tight">
           Nossos Formadores & Autores
         </h2>
         
-        <p className="text-xs sm:text-sm text-[#5e6d77] leading-relaxed">
+        <p className="text-sm sm:text-base text-[#5e6d77] leading-relaxed">
           Aprenda diretamente com profissionais de referência nas áreas jurídica, financeira, fiscal e gestão de negócios em Angola.
         </p>
 
@@ -74,7 +68,7 @@ export const TeachersSection: React.FC = () => {
                 <h3 className="text-[17px] font-semibold text-[#0c2340] tracking-tight whitespace-nowrap leading-tight font-outfit">
                   {inst.name}
                 </h3>
-                <p className="text-[12.5px] font-normal text-[#6e8090] mt-[3px] whitespace-nowrap">
+                <p className="text-sm font-normal text-[#6e8090] mt-[3px] whitespace-nowrap">
                   {inst.role}
                 </p>
               </div>

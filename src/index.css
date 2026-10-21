@@ -21,6 +21,8 @@
     font-family: 'Plus Jakarta Sans', sans-serif;
     color: #1a1a1a;
     background-color: #fcf9f6;
+    font-size: 16px;
+    line-height: 1.55;
     overflow-x: hidden;
   }
 
@@ -41,12 +43,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #be462a;
+  background: #b8a28f;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a53b21;
+  background: #8c3a27;
 }
 
 .shadow-custom {
