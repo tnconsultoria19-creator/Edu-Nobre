@@ -22,9 +22,13 @@ import {
   Sparkles,
   UserCheck,
   Building,
-  Layers
+  Layers,
+  History,
+  UserPlus,
+  Ban,
+  CheckCircle
 } from 'lucide-react';
-import { CatalogItem, Category, ContentType, User } from '../types';
+import { CatalogItem, Category, ContentType, User, AuditLogEntry } from '../types';
 
 interface AdminPortalModalProps {
   isOpen: boolean;
@@ -39,6 +43,9 @@ interface AdminPortalModalProps {
   setCurrentUser: (user: User) => void;
   usersList: User[];
   onUpdateUserRole: (userId: string, role: User['role']) => void;
+  onUpdateUserStatus: (userId: string, status: NonNullable<User['status']>) => void;
+  onRemoveUser: (userId: string) => void;
+  auditLogs: AuditLogEntry[];
 }
 
 export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
@@ -54,10 +61,18 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
   setCurrentUser,
   usersList,
   onUpdateUserRole,
+  onUpdateUserStatus,
+  onRemoveUser,
+  auditLogs,
 }) => {
-  const [activeTab, setActiveTab] = useState<'approvals' | 'catalog' | 'add_edit' | 'creator' | 'users'>('approvals');
+  const [activeTab, setActiveTab] = useState<'approvals' | 'catalog' | 'add_edit' | 'creator' | 'users' | 'audit'>('approvals');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('Todos');
+  const [filterCategory, setFilterCategory] = useState<string>('Todas');
+  const [filterStatus, setFilterStatus] = useState<string>('Todos');
+  const [usersSearch, setUsersSearch] = useState('');
+  const [usersStatusFilter, setUsersStatusFilter] = useState<string>('Todos');
+  const [auditSearch, setAuditSearch] = useState('');
 
   // Form state for creating/editing items
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
@@ -86,7 +101,19 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
     const matchesSearch = i.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           i.author.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = filterType === 'Todos' || i.contentType === filterType;
-    return matchesSearch && matchesType;
+    const matchesCategory = filterCategory === 'Todas' || i.category === filterCategory;
+    const status = i.approvalStatus || 'Publicado';
+    const matchesStatus = filterStatus === 'Todos' || status === filterStatus;
+    return matchesSearch && matchesType && matchesCategory && matchesStatus;
+  });
+  const filteredUsers = usersList.filter((u) => {
+    const q = usersSearch.trim().toLowerCase();
+    return (!q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)) &&
+      (usersStatusFilter === 'Todos' || (u.status || 'Ativo') === usersStatusFilter);
+  });
+  const filteredAuditLogs = auditLogs.filter((entry) => {
+    const q = auditSearch.trim().toLowerCase();
+    return !q || [entry.actorName, entry.actorEmail || '', entry.action, entry.entityType, entry.description].some((value) => value.toLowerCase().includes(q));
   });
 
   const handleOpenAddForm = () => {
@@ -123,6 +150,19 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
     e.preventDefault();
     
     if (!formTitle.trim()) return;
+
+    if (currentUser?.role !== 'Administrador' && currentUser?.role !== 'Formador') {
+      alert('Apenas formadores ou administradores podem submeter conteúdos.');
+      return;
+    }
+    if (currentUser?.role === 'Formador' && currentUser.status !== 'Ativo') {
+      alert('A sua conta de formador aguarda aprovação do administrador.');
+      return;
+    }
+    if (editingItem && currentUser?.role !== 'Administrador' && editingItem.creatorEmail?.toLowerCase() !== currentUser?.email.toLowerCase()) {
+      alert('Só pode editar conteúdos da sua própria conta.');
+      return;
+    }
 
     const newItemData: CatalogItem = {
       id: editingItem ? editingItem.id : `custom-${Date.now()}`,
@@ -262,6 +302,9 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
               >
                 <Users className="w-4 h-4 text-emerald-400" />
                 Utilizadores & Permissões
+              </button>
+              <button onClick={() => setActiveTab('audit')} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'audit' ? 'bg-[#0c2340] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}>
+                <History className="w-4 h-4" /> Auditoria ({auditLogs.length})
               </button>
             </>
           )}
@@ -407,17 +450,16 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <select
-                    value={filterType}
-                    onChange={(e) => setFilterType(e.target.value)}
-                    className="bg-slate-100 text-xs font-bold text-[#0c2340] py-2 px-3 rounded-xl focus:outline-none cursor-pointer"
-                  >
-                    <option value="Todos">Todos os Formatos</option>
-                    <option value="Cursos Online">Cursos Online</option>
-                    <option value="E-books">E-books</option>
-                    <option value="Arquivos">Arquivos & Minutas</option>
-                    <option value="Masterclass">Masterclass</option>
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                  <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="bg-slate-100 text-sm font-semibold text-[#0c2340] py-2 px-3 rounded-xl focus:outline-none cursor-pointer">
+                    <option value="Todos">Todos os Formatos</option><option value="Cursos Online">Cursos Online</option><option value="E-books">E-books</option><option value="Arquivos">Arquivos & Minutas</option><option value="Masterclass">Masterclass</option>
+                  </select>
+                  <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="bg-slate-100 text-sm font-semibold text-[#0c2340] py-2 px-3 rounded-xl focus:outline-none cursor-pointer">
+                    <option value="Todas">Todas as Categorias</option>
+                    {Array.from(new Set(catalogItems.map((item) => item.category))).sort().map((category) => <option key={category} value={category}>{category}</option>)}
+                  </select>
+                  <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="bg-slate-100 text-sm font-semibold text-[#0c2340] py-2 px-3 rounded-xl focus:outline-none cursor-pointer">
+                    <option value="Todos">Todos os Estados</option><option value="Publicado">Publicado</option><option value="Pendente">Pendente</option><option value="Rejeitado">Rejeitado</option>
                   </select>
                 </div>
               </div>
@@ -646,20 +688,23 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
             <div className="space-y-6">
               <div className="bg-gradient-to-r from-[#0c2340] to-[#185a7d] rounded-2xl p-6 text-white shadow-md flex flex-col md:flex-row items-center justify-between gap-6">
                 <div className="space-y-2 text-center md:text-left">
-                  <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-500 text-white">
-                    Painel do Criador
+                  <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${currentUser?.status === 'Ativo' ? 'bg-emerald-500' : 'bg-amber-500'} text-white`}>
+                    {currentUser?.status === 'Ativo' ? 'Formador aprovado' : 'Candidatura em análise'}
                   </span>
                   <h3 className="text-xl font-bold font-outfit">
                     Bem-vindo, {currentUser?.name || 'Formador Partner'}
                   </h3>
-                  <p className="text-xs text-slate-200 max-w-xl">
-                    Crie e publique cursos, e-books e minutas jurídicas para milhares de alunos e profissionais em Angola.
+                  <p className="text-sm text-slate-200 max-w-xl">
+                    {currentUser?.status === 'Ativo'
+                      ? 'Submeta novos cursos, acompanhe o estado da revisão e mantenha o seu catálogo actualizado.'
+                      : 'O seu perfil de formador está em análise. O administrador precisa de aprovar a conta antes de poder submeter conteúdos.'}
                   </p>
                 </div>
 
                 <button
                   onClick={handleOpenAddForm}
-                  className="bg-white text-[#0c2340] hover:bg-[#e05822] hover:text-white px-5 py-3 rounded-full text-xs font-bold shadow-sm transition-all cursor-pointer whitespace-nowrap"
+                  disabled={currentUser?.role !== 'Administrador' && currentUser?.status !== 'Ativo'}
+                  className="bg-white text-[#0c2340] hover:bg-[#e05822] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed px-5 py-3 rounded-full text-sm font-semibold shadow-sm transition-all cursor-pointer whitespace-nowrap"
                 >
                   + Submeter Novo Conteúdo
                 </button>
@@ -711,47 +756,79 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
           {/* 5. USERS MANAGEMENT TAB */}
           {activeTab === 'users' && (
             <div className="space-y-4">
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs p-4">
-                <h4 className="text-sm font-bold text-[#0c2340] mb-3">Gestão de Utilizadores Registados</h4>
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs p-4 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-base font-bold text-[#0c2340]">Gestão de Utilizadores Registados</h4>
+                    <p className="text-sm text-slate-500 mt-1">{usersList.filter((u) => u.role === 'Formador' && u.status === 'Pendente').length} candidaturas de formador pendentes</p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input value={usersSearch} onChange={(e) => setUsersSearch(e.target.value)} placeholder="Pesquisar nome ou e-mail..." className="bg-slate-100 text-sm rounded-xl py-2 px-3 focus:outline-none focus:ring-1 focus:ring-[#be462a]" />
+                    <select value={usersStatusFilter} onChange={(e) => setUsersStatusFilter(e.target.value)} className="bg-slate-100 text-sm rounded-xl px-3 py-2">
+                      <option value="Todos">Todos os estados</option><option value="Pendente">Pendente</option><option value="Ativo">Ativo</option><option value="Bloqueado">Bloqueado</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-slate-600">
+                    <thead className="bg-slate-50 text-slate-800 font-bold border-b border-slate-200 uppercase text-xs">
+                      <tr><th className="p-3">Nome</th><th className="p-3">E-mail</th><th className="p-3">Papel</th><th className="p-3">Estado</th><th className="p-3 text-right">Acções</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredUsers.map((u) => (
+                        <tr key={u.id}>
+                          <td className="p-3 font-semibold text-[#26211e]">{u.name}</td>
+                          <td className="p-3 text-slate-500">{u.email}</td>
+                          <td className="p-3">
+                            <select value={u.role} onChange={(e) => onUpdateUserRole(u.id, e.target.value as User['role'])} disabled={u.role === 'Administrador'} className="bg-slate-100 text-sm font-semibold text-[#0c2340] p-2 rounded-lg focus:outline-none disabled:opacity-60">
+                              <option value="Aluno">Aluno</option><option value="Formador">Formador / Criador</option><option value="Afiliado">Afiliado</option><option value="Administrador">Administrador</option>
+                            </select>
+                          </td>
+                          <td className="p-3">
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${(u.status || 'Ativo') === 'Ativo' ? 'bg-emerald-50 text-emerald-700' : (u.status || 'Ativo') === 'Pendente' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'}`}>{u.status || 'Ativo'}</span>
+                          </td>
+                          <td className="p-3 text-right">
+                            <div className="inline-flex flex-wrap justify-end gap-1.5">
+                              {u.role === 'Formador' && u.status === 'Pendente' && <button onClick={() => onUpdateUserStatus(u.id, 'Ativo')} className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 text-white px-2.5 py-1.5 text-xs font-semibold cursor-pointer"><UserPlus className="w-3.5 h-3.5" /> Aprovar</button>}
+                              {u.role !== 'Administrador' && <button onClick={() => onUpdateUserStatus(u.id, (u.status || 'Ativo') === 'Bloqueado' ? 'Ativo' : 'Bloqueado')} className="inline-flex items-center gap-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 text-xs font-semibold cursor-pointer">{(u.status || 'Ativo') === 'Bloqueado' ? <CheckCircle className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}{(u.status || 'Ativo') === 'Bloqueado' ? 'Activar' : 'Bloquear'}</button>}
+                              {u.role !== 'Administrador' && u.id !== currentUser?.id && <button onClick={() => { if (confirm(`Eliminar a conta de ${u.name}? Esta acção não pode ser anulada.`)) onRemoveUser(u.id); }} className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 cursor-pointer" title="Eliminar utilizador"><Trash2 className="w-4 h-4" /></button>}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredUsers.length === 0 && <tr><td colSpan={5} className="text-center p-8 text-slate-500">Nenhum utilizador corresponde aos filtros.</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
 
-                <table className="w-full text-left text-xs text-slate-600">
-                  <thead className="bg-slate-50 text-slate-800 font-bold border-b border-slate-200 uppercase text-[10px]">
-                    <tr>
-                      <th className="p-3">Nome</th>
-                      <th className="p-3">Email</th>
-                      <th className="p-3">Papel Atual</th>
-                      <th className="p-3 text-right">Ação</th>
-                    </tr>
-                  </thead>
+          {activeTab === 'audit' && currentUser?.role === 'Administrador' && (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div><h3 className="text-base font-bold text-[#0c2340]">Registo de Auditoria</h3><p className="text-sm text-slate-500 mt-1">Histórico das alterações registadas nesta instalação do navegador.</p></div>
+                <input value={auditSearch} onChange={(e) => setAuditSearch(e.target.value)} placeholder="Pesquisar actividade..." className="bg-white border border-slate-200 text-sm rounded-xl py-2.5 px-3 sm:w-72 focus:outline-none focus:ring-1 focus:ring-[#be462a]" />
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
+                <table className="w-full text-left text-sm min-w-[760px]">
+                  <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide"><tr><th className="p-3">Data / Hora</th><th className="p-3">Utilizador</th><th className="p-3">Acção</th><th className="p-3">Objecto</th><th className="p-3">Detalhes</th></tr></thead>
                   <tbody className="divide-y divide-slate-100">
-                    {usersList.map((u) => (
-                      <tr key={u.id}>
-                        <td className="p-3 font-bold text-[#0c2340]">{u.name}</td>
-                        <td className="p-3 text-slate-500">{u.email}</td>
-                        <td className="p-3">
-                          <span className="bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded text-[10px]">
-                            {u.role}
-                          </span>
-                        </td>
-                        <td className="p-3 text-right">
-                          <select
-                            value={u.role}
-                            onChange={(e) => onUpdateUserRole(u.id, e.target.value as any)}
-                            className="bg-slate-100 text-[11px] font-bold text-[#0c2340] p-1.5 rounded-lg focus:outline-none"
-                          >
-                            <option value="Aluno">Aluno</option>
-                            <option value="Formador">Formador / Criador</option>
-                            <option value="Administrador">Administrador</option>
-                            <option value="Afiliado">Afiliado</option>
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredAuditLogs.map((entry) => <tr key={entry.id} className="align-top hover:bg-slate-50">
+                      <td className="p-3 whitespace-nowrap text-slate-500">{new Date(entry.createdAt).toLocaleString('pt-PT')}</td>
+                      <td className="p-3"><div className="font-semibold text-[#26211e]">{entry.actorName}</div><div className="text-xs text-slate-500">{entry.actorEmail || '—'}</div></td>
+                      <td className="p-3"><span className="rounded-full bg-[#f4eee8] px-2.5 py-1 text-xs font-semibold text-[#7b3524]">{entry.action}</span></td>
+                      <td className="p-3 text-slate-600">{entry.entityType}{entry.entityId ? <div className="text-xs text-slate-400">{entry.entityId}</div> : null}</td>
+                      <td className="p-3 text-slate-600">{entry.description}</td>
+                    </tr>)}
+                    {filteredAuditLogs.length === 0 && <tr><td colSpan={5} className="p-10 text-center text-slate-500">Ainda não existem actividades registadas que correspondam à pesquisa.</td></tr>}
                   </tbody>
                 </table>
               </div>
             </div>
           )}
+
+
 
         </div>
       </div>
