@@ -255,10 +255,6 @@ export function App() {
     setCartItems((prev) => prev.filter((i) => i.item.id !== id));
   };
 
-  const handleClearCart = () => {
-    setCartItems([]);
-  };
-
   // Wishlist Handler
   const handleToggleWishlist = (item: CatalogItem) => {
     setWishlistIds((prev) =>
