@@ -188,8 +188,7 @@ async function handle(request, env) {
     const db = await env.DB.prepare("SELECT 1 AS ok").first();
     return respond({ service: "Edu-Nobre API", status: db && db.ok === 1 ? "ok" : "degraded", database: db && db.ok === 1 ? "connected" : "unavailable" }, db && db.ok === 1 ? 200 : 503);
   }
-  if (!path.startsWith("/api/")) return fail("Rota não encontrada.", 404);
-  if (path === "/setup" && method === "GET") {
+  if (path === "/setup" && request.method === "GET") {
     const setupHtml = `<!doctype html>
 <html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Configuração inicial | Edu-Nobre</title>
 <style>
@@ -228,6 +227,7 @@ form.addEventListener('submit',async(e)=>{
     return new Response(setupHtml, { status: 200, headers: headers });
   }
 
+  if (!path.startsWith("/api/")) return fail("Rota não encontrada.", 404);
   const currentUser = await getSessionUser(request, env);
   const parts = path.split("/").filter(Boolean);
   const method = request.method.toUpperCase();
