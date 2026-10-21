@@ -48,12 +48,7 @@ export function App() {
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>(() => readBrowserState('edunombre_catalog_v1', MOCK_CATALOG_ITEMS));
 
   // Users List State for Admin Management
-  const [usersList, setUsersList] = useState<User[]>(() => readBrowserState('edunombre_users_v1', [
-    { id: 'u1', name: 'Admin Principal', email: 'admin@tnconsultoria.ao', role: 'Administrador', status: 'Ativo' },
-    { id: 'u2', name: 'Sarah Fontenot', email: 'sarah@formadores.ao', role: 'Formador', status: 'Ativo' },
-    { id: 'u3', name: 'António Silva', email: 'antonio@estudante.ao', role: 'Aluno', status: 'Ativo' },
-    { id: 'u4', name: 'Erika Walker', email: 'erika@formadores.ao', role: 'Formador', status: 'Ativo' },
-  ]));
+  const [usersList, setUsersList] = useState<User[]>(() => readBrowserState('edunombre_users_v2', []));
 
   // Purchased Items Library State
   const [purchasedItems, setPurchasedItems] = useState<CatalogItem[]>(() => readBrowserState('edunombre_library_v1', [
@@ -85,7 +80,7 @@ export function App() {
   const [quickViewItem, setQuickViewItem] = useState<CatalogItem | null>(null);
 
   useEffect(() => writeBrowserState('edunombre_catalog_v1', catalogItems), [catalogItems]);
-  useEffect(() => writeBrowserState('edunombre_users_v1', usersList), [usersList]);
+  useEffect(() => writeBrowserState('edunombre_users_v2', usersList), [usersList]);
   useEffect(() => writeBrowserState('edunombre_library_v1', purchasedItems), [purchasedItems]);
   useEffect(() => writeBrowserState('edunombre_audit_v1', auditLogs), [auditLogs]);
   useEffect(() => writeBrowserState('edunombre_cart_v1', cartItems), [cartItems]);
@@ -224,12 +219,12 @@ export function App() {
   };
 
   const handleSuccessfulLogin = (signedInUser: User) => {
-    const existing = usersList.find((u) => u.email.toLowerCase() === signedInUser.email.toLowerCase());
+    const existing = usersList.find((u) => u.id === signedInUser.id);
     const finalUser = existing ? { ...signedInUser, role: existing.role, status: existing.status || signedInUser.status } : signedInUser;
     if (finalUser.status === 'Bloqueado') return;
     setUser(finalUser);
+    setUsersList((prev) => [finalUser, ...prev.filter((u) => u.id !== finalUser.id && u.email.toLowerCase() !== finalUser.email.toLowerCase())]);
     if (!existing) {
-      setUsersList((prev) => [finalUser, ...prev]);
       recordAudit('Registado', 'Utilizador', `Novo utilizador registado como ${finalUser.role}: ${finalUser.name}.`, finalUser.id, finalUser);
     } else {
       recordAudit('Sessão iniciada', 'Sessão', `Iniciou sessão: ${finalUser.email}.`, finalUser.id, finalUser);
@@ -446,7 +441,7 @@ export function App() {
       <ItemDetailsModal
         item={quickViewItem}
         onClose={() => setQuickViewItem(null)}
-        onAddToCart={handleAddToCart}
+        onAddToCart={(item) => (user ? handleAddToCart(item) : setAuthOpen(true))}
         onOpenFormModal={handleOpenForm}
       />
 
@@ -460,7 +455,10 @@ export function App() {
         onApproveItem={handleApproveItem}
         onRejectItem={handleRejectItem}
         currentUser={user}
-        setCurrentUser={setUser}
+        setCurrentUser={(nextUser) => {
+          setUser(nextUser);
+          recordAudit('Estado alterado', 'Sessão', `Perfil activo alterado para ${nextUser.role} (${nextUser.email}).`, nextUser.id, nextUser);
+        }}
         usersList={usersList}
         onUpdateUserRole={handleUpdateUserRole}
         onUpdateUserStatus={handleUpdateUserStatus}
