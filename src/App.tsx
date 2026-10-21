@@ -341,6 +341,8 @@ export function App() {
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
               totalResults={filteredCatalog.length}
+              showWishlistOnly={showWishlistOnly}
+              setShowWishlistOnly={setShowWishlistOnly}
             />
 
             {/* Catalog Grid */}

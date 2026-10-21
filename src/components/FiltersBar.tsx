@@ -1,6 +1,7 @@
 import React from 'react';
 import { Category, ContentType } from '../types';
-import { Search, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import { Search, SlidersHorizontal, ArrowUpDown, Heart } from 'lucide-react';
+import { CATEGORIES_LIST } from '../data/mockData';
 
 interface FiltersBarProps {
   selectedCategory: Category;
@@ -14,6 +15,8 @@ interface FiltersBarProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   totalResults: number;
+  showWishlistOnly: boolean;
+  setShowWishlistOnly: (value: boolean) => void;
 }
 
 export const FiltersBar: React.FC<FiltersBarProps> = ({
@@ -28,6 +31,8 @@ export const FiltersBar: React.FC<FiltersBarProps> = ({
   searchQuery,
   setSearchQuery,
   totalResults,
+  showWishlistOnly,
+  setShowWishlistOnly,
 }) => {
   const contentTypes: { id: ContentType; label: string }[] = [
     { id: 'Todas', label: 'Todos os Formatos' },
@@ -46,13 +51,15 @@ export const FiltersBar: React.FC<FiltersBarProps> = ({
     selectedCategory !== 'Todas' ||
     selectedContentType !== 'Todas' ||
     priceFilter !== 'all' ||
-    searchQuery.trim().length > 0;
+    searchQuery.trim().length > 0 ||
+    showWishlistOnly;
 
   const handleClearFilters = () => {
     setSelectedCategory('Todas');
     setSelectedContentType('Todas');
     setPriceFilter('all');
     setSearchQuery('');
+    setShowWishlistOnly(false);
   };
 
   return (
@@ -69,6 +76,19 @@ export const FiltersBar: React.FC<FiltersBarProps> = ({
             className="w-full bg-[#f4f5f7] rounded-full py-2.5 pl-10 pr-4 text-xs sm:text-sm text-[#0c2340] placeholder-[#8c9ba5] focus:outline-none focus:bg-white transition-all shadow-xs"
           />
           <Search className="w-4 h-4 text-[#8c9ba5] absolute left-3.5 top-3" />
+        </div>
+
+        {/* Category selector */}
+        <div className="w-full lg:w-auto lg:max-w-[230px]">
+          <label htmlFor="catalog-category-filter" className="sr-only">Filtrar por categoria</label>
+          <select
+            id="catalog-category-filter"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value as Category)}
+            className="w-full bg-[#f4f5f7] border border-[#e6ded6] text-sm font-semibold text-[#51463e] py-2.5 px-3 rounded-full focus:outline-none focus:ring-1 focus:ring-[#be462a] cursor-pointer"
+          >
+            {CATEGORIES_LIST.map((category) => <option key={category} value={category}>{category === 'Todas' ? 'Todas as Categorias' : category}</option>)}
+          </select>
         </div>
 
         {/* Content Type Filter Pills */}
@@ -127,12 +147,13 @@ export const FiltersBar: React.FC<FiltersBarProps> = ({
       {/* Bottom Summary & Active Filter Tags */}
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
         <div className="flex items-center gap-2 text-[#5e6d77]">
-          <SlidersHorizontal className="w-3.5 h-3.5 text-[#185a7d]" />
-          <span>
+          <SlidersHorizontal className="w-4 h-4 text-[#8c3a27]" />
+          <span className="text-sm">
             A mostrar <strong>{totalResults}</strong> resultados
             {selectedCategory !== 'Todas' && (
               <> na categoria <strong className="text-[#0c2340]">{selectedCategory}</strong></>
             )}
+            {showWishlistOnly && <span className="inline-flex items-center gap-1 ml-2 rounded-full bg-[#f8eee8] text-[#8c3a27] px-2.5 py-1 font-semibold"><Heart className="w-3.5 h-3.5" /> Favoritos</span>}
           </span>
         </div>
 
