@@ -1,0 +1,6 @@
+{
+  "name": "Edunombre",
+  "description": "Plataforma e ecossistema de aprendizagem em Angola com cursos, e-books, masterclasses e rede de mentores.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

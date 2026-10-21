@@ -1,0 +1,760 @@
+import React, { useState } from 'react';
+import { 
+  X, 
+  ShieldCheck, 
+  Check, 
+  XCircle, 
+  Edit3, 
+  Trash2, 
+  Plus, 
+  Search, 
+  Filter, 
+  Users, 
+  Package, 
+  Clock, 
+  TrendingUp, 
+  CheckCircle2, 
+  AlertCircle,
+  Eye,
+  FileText,
+  DollarSign,
+  UploadCloud,
+  Sparkles,
+  UserCheck,
+  Building,
+  Layers
+} from 'lucide-react';
+import { CatalogItem, Category, ContentType, User } from '../types';
+
+interface AdminPortalModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  catalogItems: CatalogItem[];
+  onAddItem: (item: CatalogItem) => void;
+  onUpdateItem: (item: CatalogItem) => void;
+  onDeleteItem: (id: string) => void;
+  onApproveItem: (id: string) => void;
+  onRejectItem: (id: string, reason: string) => void;
+  currentUser: User | null;
+  setCurrentUser: (user: User) => void;
+  usersList: User[];
+  onUpdateUserRole: (userId: string, role: User['role']) => void;
+}
+
+export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
+  isOpen,
+  onClose,
+  catalogItems,
+  onAddItem,
+  onUpdateItem,
+  onDeleteItem,
+  onApproveItem,
+  onRejectItem,
+  currentUser,
+  setCurrentUser,
+  usersList,
+  onUpdateUserRole,
+}) => {
+  const [activeTab, setActiveTab] = useState<'approvals' | 'catalog' | 'add_edit' | 'creator' | 'users'>('approvals');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<string>('Todos');
+
+  // Form state for creating/editing items
+  const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
+  const [rejectionReasonInput, setRejectionReasonInput] = useState<{ id: string; reason: string } | null>(null);
+
+  // Form Fields
+  const [formTitle, setFormTitle] = useState('');
+  const [formCategory, setFormCategory] = useState<Category>('Finanças');
+  const [formContentType, setFormContentType] = useState<ContentType>('Cursos Online');
+  const [formPrice, setFormPrice] = useState<number>(15000);
+  const [formOriginalPrice, setFormOriginalPrice] = useState<number>(25000);
+  const [formAuthorName, setFormAuthorName] = useState('TN Consultoria');
+  const [formAuthorRole, setFormAuthorRole] = useState('Especialista em Gestão');
+  const [formImage, setFormImage] = useState('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80');
+  const [formDescription, setFormDescription] = useState('Formação prática completa concebida para o mercado angolano.');
+  const [formBadge, setFormBadge] = useState<any>('Novo');
+  const [formFormat, setFormFormat] = useState<any>('Vídeo');
+
+  if (!isOpen) return null;
+
+  // Filter items pending approval
+  const pendingItems = catalogItems.filter(i => i.approvalStatus === 'Pendente');
+  const publishedItems = catalogItems.filter(i => i.approvalStatus === 'Publicado' || !i.approvalStatus);
+
+  const filteredCatalog = catalogItems.filter(i => {
+    const matchesSearch = i.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          i.author.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = filterType === 'Todos' || i.contentType === filterType;
+    return matchesSearch && matchesType;
+  });
+
+  const handleOpenAddForm = () => {
+    setEditingItem(null);
+    setFormTitle('');
+    setFormCategory('Finanças');
+    setFormContentType('Cursos Online');
+    setFormPrice(15000);
+    setFormOriginalPrice(25000);
+    setFormAuthorName(currentUser?.name || 'TN Consultoria');
+    setFormAuthorRole('Formador Certificado');
+    setFormImage('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80');
+    setFormDescription('Descrição detalhada do conteúdo e objetivos de aprendizagem.');
+    setActiveTab('add_edit');
+  };
+
+  const handleOpenEditForm = (item: CatalogItem) => {
+    setEditingItem(item);
+    setFormTitle(item.title);
+    setFormCategory(item.category);
+    setFormContentType(item.contentType);
+    setFormPrice(item.price);
+    setFormOriginalPrice(item.originalPrice || item.price * 1.5);
+    setFormAuthorName(item.author.name);
+    setFormAuthorRole(item.author.role || 'Formador');
+    setFormImage(item.image);
+    setFormDescription(item.description);
+    setFormBadge(item.badge || 'Novo');
+    setFormFormat(item.format || 'Vídeo');
+    setActiveTab('add_edit');
+  };
+
+  const handleSubmitForm = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formTitle.trim()) return;
+
+    const newItemData: CatalogItem = {
+      id: editingItem ? editingItem.id : `custom-${Date.now()}`,
+      title: formTitle,
+      category: formCategory,
+      contentType: formContentType,
+      price: Number(formPrice),
+      originalPrice: Number(formOriginalPrice),
+      badge: formBadge,
+      format: formFormat,
+      author: {
+        name: formAuthorName,
+        role: formAuthorRole,
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+      },
+      rating: editingItem ? editingItem.rating : 5.0,
+      ratingCount: editingItem ? editingItem.ratingCount : 1,
+      image: formImage || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80',
+      description: formDescription,
+      // If Admin creates/edits -> Auto Publish. If Creator submits -> Set to Pendente!
+      approvalStatus: currentUser?.role === 'Administrador' ? 'Publicado' : 'Pendente',
+      creatorEmail: currentUser?.email,
+      createdAt: new Date().toLocaleDateString('pt-PT'),
+    };
+
+    if (editingItem) {
+      onUpdateItem(newItemData);
+    } else {
+      onAddItem(newItemData);
+    }
+
+    alert(currentUser?.role === 'Administrador' 
+      ? 'Item guardado e publicado no catálogo principal!' 
+      : 'Submissão enviada com sucesso! Aguarda aprovação do Administrador.');
+
+    setActiveTab(currentUser?.role === 'Administrador' ? 'catalog' : 'creator');
+  };
+
+  // Demo user role switcher profiles
+  const demoUsers: User[] = [
+    { id: 'u1', name: 'Admin Principal', email: 'admin@tnconsultoria.ao', role: 'Administrador', avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=200&q=80' },
+    { id: 'u2', name: 'Sarah Fontenot (Criadora)', email: 'sarah@formadores.ao', role: 'Formador', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80' },
+    { id: 'u3', name: 'António Silva (Aluno)', email: 'antonio@estudante.ao', role: 'Aluno', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80' },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl max-w-6xl w-full max-h-[92vh] shadow-2xl flex flex-col overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200 my-auto">
+        
+        {/* Top Header & Persona Switcher */}
+        <div className="bg-[#0c2340] text-white p-4 sm:p-6 flex flex-col md:flex-row items-center justify-between gap-4 border-b border-slate-700">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#185a7d] flex items-center justify-center text-white shadow-md">
+              <ShieldCheck className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-black font-outfit text-white">
+                  Infraestrutura de Gestão & Moderação
+                </h2>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-[#e05822] text-white">
+                  {currentUser?.role || 'Administrador'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-300">
+                Painel unificado para moderação de conteúdos, edição do catálogo e gestão de criadores.
+              </p>
+            </div>
+          </div>
+
+          {/* Persona / Account Selector */}
+          <div className="flex items-center gap-2 bg-slate-800/80 p-1.5 rounded-2xl border border-slate-700">
+            <span className="text-[11px] text-slate-400 font-bold px-2 hidden sm:inline">Perfil Ativo:</span>
+            {demoUsers.map((u) => (
+              <button
+                key={u.id}
+                onClick={() => {
+                  setCurrentUser(u);
+                  if (u.role === 'Administrador') setActiveTab('approvals');
+                  else setActiveTab('creator');
+                }}
+                className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+                  currentUser?.email === u.email
+                    ? 'bg-[#185a7d] text-white shadow-sm'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+                }`}
+              >
+                <span>{u.role === 'Administrador' ? '👑 Admin' : u.role === 'Formador' ? '✍️ Criador' : '🎓 Aluno'}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="bg-[#f8fafc] border-b border-slate-200 px-4 sm:px-6 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar">
+          {currentUser?.role === 'Administrador' && (
+            <>
+              <button
+                onClick={() => setActiveTab('approvals')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'approvals'
+                    ? 'bg-[#0c2340] text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Clock className="w-4 h-4 text-amber-400" />
+                Fila de Moderação ({pendingItems.length})
+              </button>
+
+              <button
+                onClick={() => setActiveTab('catalog')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'catalog'
+                    ? 'bg-[#0c2340] text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Package className="w-4 h-4 text-sky-400" />
+                Catálogo Geral ({catalogItems.length})
+              </button>
+
+              <button
+                onClick={() => setActiveTab('users')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'users'
+                    ? 'bg-[#0c2340] text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Users className="w-4 h-4 text-emerald-400" />
+                Utilizadores & Permissões
+              </button>
+            </>
+          )}
+
+          <button
+            onClick={() => setActiveTab('creator')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'creator'
+                ? 'bg-[#0c2340] text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <UploadCloud className="w-4 h-4 text-indigo-400" />
+            Portal do Criador / Submeter
+          </button>
+
+          <button
+            onClick={handleOpenAddForm}
+            className="ml-auto bg-[#e05822] hover:bg-[#c84a1b] text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4" />
+            Adicionar Novo Conteúdo
+          </button>
+        </div>
+
+        {/* Tab Content Body */}
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-50/50">
+
+          {/* 1. APPROVALS QUEUE TAB */}
+          {activeTab === 'approvals' && (
+            <div className="space-y-6">
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-6 h-6 text-amber-600 shrink-0" />
+                  <div>
+                    <h3 className="text-sm font-bold text-amber-900">
+                      Submissões Aguardando Moderação
+                    </h3>
+                    <p className="text-xs text-amber-700">
+                      Examine o conteúdo criado por instrutores e parceiros antes da sua publicação na loja.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-sm font-black text-amber-900 bg-amber-200/80 px-3 py-1 rounded-full">
+                  {pendingItems.length} Pendentes
+                </span>
+              </div>
+
+              {pendingItems.length === 0 ? (
+                <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 space-y-3">
+                  <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
+                  <h3 className="text-base font-bold text-[#0c2340]">Nenhuma submissão pendente</h3>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    Todos os conteúdos submetidos pelos criadores foram revistos e processados.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {pendingItems.map((item) => (
+                    <div key={item.id} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800">
+                            {item.contentType} • {item.category}
+                          </span>
+                          <span className="text-sm font-bold text-[#185a7d]">
+                            {item.price === 0 ? 'Grátis' : `${item.price.toLocaleString()} Kz`}
+                          </span>
+                        </div>
+
+                        <div className="flex gap-3">
+                          <img
+                            src={item.image}
+                            alt=""
+                            className="w-20 h-20 rounded-xl object-cover shrink-0 bg-slate-100"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="space-y-1">
+                            <h4 className="text-sm font-bold text-[#0c2340] leading-snug">
+                              {item.title}
+                            </h4>
+                            <p className="text-xs text-slate-500">
+                              Autor: <strong>{item.author.name}</strong> ({item.author.role})
+                            </p>
+                            <p className="text-xs text-slate-600 line-clamp-2">
+                              {item.description}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Approval / Rejection Controls */}
+                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                        <button
+                          onClick={() => handleOpenEditForm(item)}
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          Editar
+                        </button>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              const reason = prompt('Motivo da rejeição:', 'Informações insuficientes ou fora das diretrizes.');
+                              if (reason) onRejectItem(item.id, reason);
+                            }}
+                            className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-rose-100 hover:bg-rose-200 text-rose-700 flex items-center gap-1 cursor-pointer"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            Rejeitar
+                          </button>
+
+                          <button
+                            onClick={() => onApproveItem(item.id)}
+                            className="px-4 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 shadow-xs cursor-pointer"
+                          >
+                            <Check className="w-4 h-4" />
+                            Aprovar & Publicar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 2. CATALOG MANAGEMENT TAB */}
+          {activeTab === 'catalog' && (
+            <div className="space-y-4">
+              {/* Filter controls */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="relative w-full sm:w-72">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Pesquisar no catálogo..."
+                    className="w-full bg-slate-100 rounded-xl py-2 pl-9 pr-3 text-xs text-[#0c2340] focus:outline-none focus:bg-white"
+                  />
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <select
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value)}
+                    className="bg-slate-100 text-xs font-bold text-[#0c2340] py-2 px-3 rounded-xl focus:outline-none cursor-pointer"
+                  >
+                    <option value="Todos">Todos os Formatos</option>
+                    <option value="Cursos Online">Cursos Online</option>
+                    <option value="E-books">E-books</option>
+                    <option value="Arquivos">Arquivos & Minutas</option>
+                    <option value="Masterclass">Masterclass</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-600">
+                    <thead className="bg-slate-50 text-slate-800 font-bold border-b border-slate-200 uppercase text-[10px] tracking-wider">
+                      <tr>
+                        <th className="p-3.5">Conteúdo</th>
+                        <th className="p-3.5">Categoria</th>
+                        <th className="p-3.5">Preço</th>
+                        <th className="p-3.5">Estado</th>
+                        <th className="p-3.5 text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredCatalog.map((item) => (
+                        <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="p-3.5">
+                            <div className="flex items-center gap-3">
+                              <img src={item.image} alt="" className="w-10 h-10 rounded-lg object-cover bg-slate-100" />
+                              <div>
+                                <h4 className="font-bold text-[#0c2340] line-clamp-1">{item.title}</h4>
+                                <span className="text-[11px] text-slate-400">Por {item.author.name}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3.5">
+                            <span className="bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded-md text-[11px]">
+                              {item.category}
+                            </span>
+                          </td>
+                          <td className="p-3.5 font-bold text-[#185a7d]">
+                            {item.price === 0 ? 'Grátis' : `${item.price.toLocaleString()} Kz`}
+                          </td>
+                          <td className="p-3.5">
+                            {item.approvalStatus === 'Publicado' || !item.approvalStatus ? (
+                              <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-md text-[10px] flex items-center gap-1 w-fit">
+                                <CheckCircle2 className="w-3 h-3" /> Publicado
+                              </span>
+                            ) : item.approvalStatus === 'Pendente' ? (
+                              <span className="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-md text-[10px] flex items-center gap-1 w-fit">
+                                <Clock className="w-3 h-3" /> Pendente
+                              </span>
+                            ) : (
+                              <span className="bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-md text-[10px] flex items-center gap-1 w-fit">
+                                <XCircle className="w-3 h-3" /> Rejeitado
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3.5 text-right space-x-1">
+                            <button
+                              onClick={() => handleOpenEditForm(item)}
+                              className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-200 transition-colors inline-block cursor-pointer"
+                              title="Editar"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm(`Tem a certeza que deseja eliminar "${item.title}"?`)) {
+                                  onDeleteItem(item.id);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-100 transition-colors inline-block cursor-pointer"
+                              title="Eliminar"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 3. ADD / EDIT FORM TAB */}
+          {activeTab === 'add_edit' && (
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm max-w-3xl mx-auto space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <h3 className="text-base sm:text-lg font-bold text-[#0c2340]">
+                  {editingItem ? 'Editar Entrada de Conteúdo' : 'Adicionar Novo Conteúdo ao Catálogo'}
+                </h3>
+                <span className="text-xs text-slate-400">
+                  {currentUser?.role === 'Administrador' ? 'Modo Administrador (Publicação Direta)' : 'Submissão de Criador'}
+                </span>
+              </div>
+
+              <form onSubmit={handleSubmitForm} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-xs font-bold text-slate-700">Título do Conteúdo *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formTitle}
+                      onChange={(e) => setFormTitle(e.target.value)}
+                      placeholder="Ex: Curso Prático de Gestão Financeira em Luanda"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-[#0c2340] focus:outline-none focus:border-[#185a7d]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Tipo de Conteúdo</label>
+                    <select
+                      value={formContentType}
+                      onChange={(e) => setFormContentType(e.target.value as ContentType)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-[#0c2340] focus:outline-none"
+                    >
+                      <option value="Cursos Online">Cursos Online</option>
+                      <option value="E-books">E-books</option>
+                      <option value="Arquivos">Arquivos & Minutas</option>
+                      <option value="Masterclass">Masterclass</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Categoria</label>
+                    <select
+                      value={formCategory}
+                      onChange={(e) => setFormCategory(e.target.value as Category)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-[#0c2340] focus:outline-none"
+                    >
+                      <option value="Finanças">Finanças</option>
+                      <option value="Direito">Direito</option>
+                      <option value="Marketing & vendas">Marketing & Vendas</option>
+                      <option value="TI & Software">TI & Software</option>
+                      <option value="Economia">Economia</option>
+                      <option value="Negócio">Negócio</option>
+                      <option value="Desenvolvimento pessoal">Desenvolvimento Pessoal</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Preço Atual (Kz) - 0 para Grátis</label>
+                    <input
+                      type="number"
+                      required
+                      value={formPrice}
+                      onChange={(e) => setFormPrice(Number(e.target.value))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-[#0c2340] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Preço Anterior (Riscado)</label>
+                    <input
+                      type="number"
+                      value={formOriginalPrice}
+                      onChange={(e) => setFormOriginalPrice(Number(e.target.value))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-[#0c2340] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Nome do Autor/Formador</label>
+                    <input
+                      type="text"
+                      required
+                      value={formAuthorName}
+                      onChange={(e) => setFormAuthorName(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-[#0c2340] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Cargo/Especialidade do Autor</label>
+                    <input
+                      type="text"
+                      value={formAuthorRole}
+                      onChange={(e) => setFormAuthorRole(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-[#0c2340] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-xs font-bold text-slate-700">URL da Imagem de Capa</label>
+                    <input
+                      type="url"
+                      required
+                      value={formImage}
+                      onChange={(e) => setFormImage(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-[#0c2340] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-xs font-bold text-slate-700">Descrição Completa</label>
+                    <textarea
+                      rows={3}
+                      required
+                      value={formDescription}
+                      onChange={(e) => setFormDescription(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-[#0c2340] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab(currentUser?.role === 'Administrador' ? 'catalog' : 'creator')}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 rounded-xl text-xs font-bold bg-[#185a7d] hover:bg-[#12415b] text-white shadow-sm cursor-pointer"
+                  >
+                    {editingItem ? 'Atualizar Item' : currentUser?.role === 'Administrador' ? 'Publicar Agora' : 'Submeter para Aprovação'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* 4. CREATOR PORTAL TAB */}
+          {activeTab === 'creator' && (
+            <div className="space-y-6">
+              <div className="bg-gradient-to-r from-[#0c2340] to-[#185a7d] rounded-2xl p-6 text-white shadow-md flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="space-y-2 text-center md:text-left">
+                  <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-500 text-white">
+                    Painel do Criador
+                  </span>
+                  <h3 className="text-xl font-bold font-outfit">
+                    Bem-vindo, {currentUser?.name || 'Formador Partner'}
+                  </h3>
+                  <p className="text-xs text-slate-200 max-w-xl">
+                    Crie e publique cursos, e-books e minutas jurídicas para milhares de alunos e profissionais em Angola.
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleOpenAddForm}
+                  className="bg-white text-[#0c2340] hover:bg-[#e05822] hover:text-white px-5 py-3 rounded-full text-xs font-bold shadow-sm transition-all cursor-pointer whitespace-nowrap"
+                >
+                  + Submeter Novo Conteúdo
+                </button>
+              </div>
+
+              {/* Creator Submissions List */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-4">
+                <h4 className="text-sm font-bold text-[#0c2340]">Minhas Submissões & Estado</h4>
+
+                <div className="space-y-3">
+                  {catalogItems.filter(i => i.creatorEmail === currentUser?.email || i.author.name === currentUser?.name).length === 0 ? (
+                    <div className="text-center py-8 text-xs text-slate-500">
+                      Ainda não submeteu nenhum conteúdo com esta conta. Clique em "+ Submeter Novo Conteúdo" acima.
+                    </div>
+                  ) : (
+                    catalogItems.filter(i => i.creatorEmail === currentUser?.email || i.author.name === currentUser?.name).map((item) => (
+                      <div key={item.id} className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
+                        <div className="flex items-center gap-3">
+                          <img src={item.image} alt="" className="w-12 h-12 rounded-lg object-cover bg-slate-200" />
+                          <div>
+                            <h5 className="text-xs font-bold text-[#0c2340]">{item.title}</h5>
+                            <span className="text-[11px] text-slate-500">{item.contentType} • {item.price.toLocaleString()} Kz</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          {item.approvalStatus === 'Publicado' || !item.approvalStatus ? (
+                            <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Publicado
+                            </span>
+                          ) : item.approvalStatus === 'Pendente' ? (
+                            <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1">
+                              <Clock className="w-3.5 h-3.5" /> Em Análise
+                            </span>
+                          ) : (
+                            <span className="bg-rose-100 text-rose-800 text-[10px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1">
+                              <XCircle className="w-3.5 h-3.5" /> Rejeitado
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 5. USERS MANAGEMENT TAB */}
+          {activeTab === 'users' && (
+            <div className="space-y-4">
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs p-4">
+                <h4 className="text-sm font-bold text-[#0c2340] mb-3">Gestão de Utilizadores Registados</h4>
+
+                <table className="w-full text-left text-xs text-slate-600">
+                  <thead className="bg-slate-50 text-slate-800 font-bold border-b border-slate-200 uppercase text-[10px]">
+                    <tr>
+                      <th className="p-3">Nome</th>
+                      <th className="p-3">Email</th>
+                      <th className="p-3">Papel Atual</th>
+                      <th className="p-3 text-right">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {usersList.map((u) => (
+                      <tr key={u.id}>
+                        <td className="p-3 font-bold text-[#0c2340]">{u.name}</td>
+                        <td className="p-3 text-slate-500">{u.email}</td>
+                        <td className="p-3">
+                          <span className="bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded text-[10px]">
+                            {u.role}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right">
+                          <select
+                            value={u.role}
+                            onChange={(e) => onUpdateUserRole(u.id, e.target.value as any)}
+                            className="bg-slate-100 text-[11px] font-bold text-[#0c2340] p-1.5 rounded-lg focus:outline-none"
+                          >
+                            <option value="Aluno">Aluno</option>
+                            <option value="Formador">Formador / Criador</option>
+                            <option value="Administrador">Administrador</option>
+                            <option value="Afiliado">Afiliado</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+};
