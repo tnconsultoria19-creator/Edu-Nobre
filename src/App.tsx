@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { HeaderTop } from './components/HeaderTop';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { CategoryShowcase } from './components/CategoryShowcase';
@@ -40,8 +39,7 @@ const writeBrowserState = (key: string, value: unknown) => {
 
 export function App() {
   // Global State
-  const [currency, setCurrency] = useState('AOA');
-  const [language, setLanguage] = useState('Português (AO)');
+  const currency = 'AOA';
   const [user, setUser] = useState<User | null>(null);
 
   // Dynamic Catalog State
@@ -323,17 +321,6 @@ export function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#faf7f4] text-[#1a1a1a]">
-      {/* 1. Header Top Info Bar */}
-      <HeaderTop
-        user={user}
-        onOpenAuth={() => setAuthOpen(true)}
-        onLogout={handleLogout}
-        currency={currency}
-        setCurrency={setCurrency}
-        language={language}
-        setLanguage={setLanguage}
-      />
-
       {/* 2. Main Navigation Header */}
       <Header
         cartItems={cartItems}
