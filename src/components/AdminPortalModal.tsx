@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   ShieldCheck, 
@@ -65,7 +65,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
   onRemoveUser,
   auditLogs,
 }) => {
-  const [activeTab, setActiveTab] = useState<'approvals' | 'catalog' | 'add_edit' | 'creator' | 'users' | 'audit'>('approvals');
+  const [activeTab, setActiveTab] = useState<'approvals' | 'catalog' | 'add_edit' | 'creator' | 'users' | 'audit'>(() => currentUser?.role === 'Administrador' ? 'approvals' : 'creator');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('Todos');
   const [filterCategory, setFilterCategory] = useState<string>('Todas');
@@ -90,6 +90,14 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
   const [formDescription, setFormDescription] = useState('Formação prática completa concebida para o mercado angolano.');
   const [formBadge, setFormBadge] = useState<any>('Novo');
   const [formFormat, setFormFormat] = useState<any>('Vídeo');
+
+  useEffect(() => {
+    if (currentUser?.role !== 'Administrador') {
+      setActiveTab('creator');
+    } else if (activeTab === 'creator') {
+      setActiveTab('approvals');
+    }
+  }, [currentUser?.role]);
 
   if (!isOpen) return null;
 
@@ -235,7 +243,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
 
           {/* Persona / Account Selector */}
           <div className="flex items-center gap-2 bg-slate-800/80 p-1.5 rounded-2xl border border-slate-700">
-            <span className="text-[11px] text-slate-400 font-bold px-2 hidden sm:inline">Perfil Ativo:</span>
+            <span className="text-[11px] text-slate-400 font-bold px-2 hidden sm:inline">Pré-visualização de perfil:</span>
             {demoUsers.map((u) => (
               <button
                 key={u.id}
@@ -334,7 +342,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-50/50">
 
           {/* 1. APPROVALS QUEUE TAB */}
-          {activeTab === 'approvals' && (
+          {activeTab === 'approvals' && currentUser?.role === 'Administrador' && (
             <div className="space-y-6">
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
@@ -435,7 +443,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
           )}
 
           {/* 2. CATALOG MANAGEMENT TAB */}
-          {activeTab === 'catalog' && (
+          {activeTab === 'catalog' && currentUser?.role === 'Administrador' && (
             <div className="space-y-4">
               {/* Filter controls */}
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -542,7 +550,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
           )}
 
           {/* 3. ADD / EDIT FORM TAB */}
-          {activeTab === 'add_edit' && (
+          {activeTab === 'add_edit' && (currentUser?.role === 'Administrador' || currentUser?.role === 'Formador') && (
             <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm max-w-3xl mx-auto space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                 <h3 className="text-base sm:text-lg font-bold text-[#0c2340]">
@@ -721,29 +729,23 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                     </div>
                   ) : (
                     catalogItems.filter(i => i.creatorEmail === currentUser?.email || i.author.name === currentUser?.name).map((item) => (
-                      <div key={item.id} className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
-                        <div className="flex items-center gap-3">
-                          <img src={item.image} alt="" className="w-12 h-12 rounded-lg object-cover bg-slate-200" />
-                          <div>
-                            <h5 className="text-xs font-bold text-[#0c2340]">{item.title}</h5>
-                            <span className="text-[11px] text-slate-500">{item.contentType} • {item.price.toLocaleString()} Kz</span>
+                      <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <img src={item.image} alt="" className="w-12 h-12 rounded-lg object-cover bg-slate-200 shrink-0" />
+                          <div className="min-w-0">
+                            <h5 className="text-sm font-semibold text-[#26211e]">{item.title}</h5>
+                            <span className="text-sm text-slate-500">{item.contentType} • {item.price.toLocaleString()} Kz</span>
+                            {item.rejectionReason && item.approvalStatus === 'Rejeitado' && <p className="text-xs text-rose-700 mt-1">Motivo da rejeição: {item.rejectionReason}</p>}
                           </div>
                         </div>
-
-                        <div>
-                          {item.approvalStatus === 'Publicado' || !item.approvalStatus ? (
-                            <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Publicado
-                            </span>
-                          ) : item.approvalStatus === 'Pendente' ? (
-                            <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1">
-                              <Clock className="w-3.5 h-3.5" /> Em Análise
-                            </span>
-                          ) : (
-                            <span className="bg-rose-100 text-rose-800 text-[10px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1">
-                              <XCircle className="w-3.5 h-3.5" /> Rejeitado
-                            </span>
-                          )}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {item.approvalStatus === 'Publicado' || !item.approvalStatus
+                            ? <span className="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-md">Publicado</span>
+                            : item.approvalStatus === 'Pendente'
+                            ? <span className="bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-md">Em análise</span>
+                            : <span className="bg-rose-100 text-rose-800 text-xs font-semibold px-2.5 py-1 rounded-md">Rejeitado</span>}
+                          <button onClick={() => handleOpenEditForm(item)} className="p-2 rounded-lg text-slate-600 hover:bg-slate-200 cursor-pointer" title="Editar e reenviar"><Edit3 className="w-4 h-4" /></button>
+                          <button onClick={() => { if (confirm(`Eliminar “${item.title}”?`)) onDeleteItem(item.id); }} className="p-2 rounded-lg text-rose-600 hover:bg-rose-100 cursor-pointer" title="Eliminar submissão"><Trash2 className="w-4 h-4" /></button>
                         </div>
                       </div>
                     ))
@@ -754,7 +756,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
           )}
 
           {/* 5. USERS MANAGEMENT TAB */}
-          {activeTab === 'users' && (
+          {activeTab === 'users' && currentUser?.role === 'Administrador' && (
             <div className="space-y-4">
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs p-4 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
