@@ -170,8 +170,27 @@ export function App() {
   };
 
   const handleUpdateItem = (updatedItem: CatalogItem) => {
+    const existing = catalogItems.find((item) => item.id === updatedItem.id);
+    const fields: Array<[string, unknown, unknown]> = existing ? [
+      ['Título', existing.title, updatedItem.title],
+      ['Categoria', existing.category, updatedItem.category],
+      ['Formato', existing.contentType, updatedItem.contentType],
+      ['Preço', existing.price, updatedItem.price],
+      ['Preço anterior', existing.originalPrice ?? null, updatedItem.originalPrice ?? null],
+      ['Autor/Formador', existing.author.name, updatedItem.author.name],
+      ['Especialidade', existing.author.role || '', updatedItem.author.role || ''],
+      ['Imagem de capa', existing.image, updatedItem.image],
+      ['Descrição', existing.description, updatedItem.description],
+      ['Estado', existing.approvalStatus || 'Publicado', updatedItem.approvalStatus || 'Publicado'],
+      ['Motivo de rejeição', existing.rejectionReason || '', updatedItem.rejectionReason || ''],
+    ] : [];
+    const changes = fields
+      .filter(([, before, after]) => String(before ?? '') !== String(after ?? ''))
+      .map(([label, before, after]) => `${label}: “${String(before ?? '—').slice(0, 100)}” → “${String(after ?? '—').slice(0, 100)}”`);
     setCatalogItems((prev) => prev.map((i) => (i.id === updatedItem.id ? updatedItem : i)));
-    recordAudit('Editado', 'Conteúdo', `Actualizou “${updatedItem.title}”.`, updatedItem.id);
+    recordAudit('Editado', 'Conteúdo', changes.length
+      ? `Actualizou “${updatedItem.title}”. ${changes.join('; ')}`
+      : `Guardou “${updatedItem.title}” sem diferenças de campo detectadas.`, updatedItem.id);
   };
 
   const handleDeleteItem = (id: string) => {
@@ -197,18 +216,21 @@ export function App() {
   const handleUpdateUserRole = (userId: string, role: User['role']) => {
     const target = usersList.find((u) => u.id === userId);
     if (!target) return;
-    setUsersList((prev) => prev.map((u) => u.id === userId ? { ...u, role, status: role !== u.role && role === 'Formador' ? 'Pendente' : u.status } : u));
-    updateStoredAccount(target.email, { role });
-    recordAudit('Papel alterado', 'Utilizador', `Alterou o papel de ${target.name} para ${role}.`, userId);
+    const previousRole = target.role;
+    const nextStatus = role !== previousRole && role === 'Formador' ? 'Pendente' : target.status;
+    setUsersList((prev) => prev.map((u) => u.id === userId ? { ...u, role, status: nextStatus } : u));
+    updateStoredAccount(target.email, { role, status: nextStatus });
+    recordAudit('Papel alterado', 'Utilizador', `Alterou ${target.name}: papel “${previousRole}” → “${role}”${nextStatus !== target.status ? `; estado “${target.status || 'Ativo'}” → “${nextStatus}”` : ''}.`, userId);
   };
 
   const handleUpdateUserStatus = (userId: string, status: NonNullable<User['status']>) => {
     const target = usersList.find((u) => u.id === userId);
     if (!target || (target.role === 'Administrador' && status !== 'Ativo')) return;
+    const previousStatus = target.status || 'Ativo';
     setUsersList((prev) => prev.map((u) => u.id === userId ? { ...u, status } : u));
     updateStoredAccount(target.email, { status });
     if (user?.id === userId) setUser({ ...user, status });
-    recordAudit('Estado alterado', 'Utilizador', `Alterou o estado de ${target.name} para ${status}.`, userId);
+    recordAudit('Estado alterado', 'Utilizador', `Alterou o estado de ${target.name}: “${previousStatus}” → “${status}”.`, userId);
   };
 
   const handleRemoveUser = (userId: string) => {
