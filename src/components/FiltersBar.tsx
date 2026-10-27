@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Category, ContentType } from '../types';
-import { Search, SlidersHorizontal, ArrowUpDown, Heart } from 'lucide-react';
+import { Search, SlidersHorizontal, ArrowUpDown, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CATEGORIES_LIST } from '../data/mockData';
 
 interface FiltersBarProps {
@@ -34,6 +34,9 @@ export const FiltersBar: React.FC<FiltersBarProps> = ({
   showWishlistOnly,
   setShowWishlistOnly,
 }) => {
+  const contentTypesRef = useRef<HTMLDivElement>(null);
+  const scrollContentTypes = (direction: 'left' | 'right') => contentTypesRef.current?.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
+
   const contentTypes: { id: ContentType; label: string }[] = [
     { id: 'Todas', label: 'Todos os Formatos' },
     { id: 'Cursos Online', label: 'Cursos Online' },
@@ -92,12 +95,14 @@ export const FiltersBar: React.FC<FiltersBarProps> = ({
         </div>
 
         {/* Content Type Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+        <div className="flex items-center gap-1 w-full min-w-0 lg:max-w-[430px]">
+          <button type="button" onClick={() => scrollContentTypes('left')} aria-label="Ver filtros anteriores" className="shrink-0 w-8 h-8 rounded-full border border-[#e6ded6] bg-white text-[#574f49] flex items-center justify-center"><ChevronLeft className="w-4 h-4" /></button>
+          <div ref={contentTypesRef} className="flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto no-scrollbar scroll-smooth pb-1">
           {contentTypes.map((ct) => (
             <button
               key={ct.id}
               onClick={() => setSelectedContentType(ct.id)}
-              className={`text-xs font-bold px-3.5 py-2 rounded-full transition-all cursor-pointer whitespace-nowrap ${
+              className={`min-h-10 text-[11px] sm:text-xs font-bold px-2.5 sm:px-3.5 py-2 rounded-full transition-all cursor-pointer whitespace-nowrap ${
                 selectedContentType === ct.id
                   ? 'bg-[#185a7d] text-white shadow-xs'
                   : 'bg-[#f4f5f7] text-[#5e6d77] hover:text-[#0c2340] hover:bg-[#eaf1f5]'
@@ -106,6 +111,8 @@ export const FiltersBar: React.FC<FiltersBarProps> = ({
               {ct.label}
             </button>
           ))}
+          </div>
+          <button type="button" onClick={() => scrollContentTypes('right')} aria-label="Ver mais filtros" className="shrink-0 w-8 h-8 rounded-full border border-[#e6ded6] bg-white text-[#574f49] flex items-center justify-center"><ChevronRight className="w-4 h-4" /></button>
         </div>
 
         {/* Sort & Price Dropdowns */}

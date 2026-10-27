@@ -1,6 +1,6 @@
 import React from 'react';
 import { CatalogItem } from '../types';
-import { ShoppingBag, Star, Zap, Heart } from 'lucide-react';
+import { ShoppingBag, Star, Zap, Heart, BookOpen } from 'lucide-react';
 
 interface CourseCardProps {
   item: CatalogItem;
@@ -9,6 +9,7 @@ interface CourseCardProps {
   isWishlisted?: boolean;
   onQuickView?: (item: CatalogItem) => void;
   currency?: string;
+  demoMode?: boolean;
 }
 
 export const CourseCard: React.FC<CourseCardProps> = ({
@@ -18,6 +19,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   onToggleWishlist,
   isWishlisted = false,
   currency = 'AOA',
+  demoMode = false,
 }) => {
   // Format price display in AOA / Kwanzas (like Kubeta.ao)
   const isAOA = currency === 'AOA';
@@ -64,29 +66,29 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       </div>
 
       {/* 2. Text Content & Actions */}
-      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
+      <div className="p-2.5 sm:p-5 flex-1 flex flex-col justify-between">
         <div>
           {/* Tags */}
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
-            <span className="text-[11px] font-semibold text-[#655b54] bg-[#f4f0eb] px-2 py-1 rounded-md tracking-wide">{item.contentType}</span>
-            <span className="text-[11px] font-semibold text-[#8c3a27] bg-[#f8eee8] px-2 py-1 rounded-md tracking-wide">{item.category}</span>
+            <span className="text-[9px] sm:text-[11px] font-semibold text-[#655b54] bg-[#f4f0eb] px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md tracking-wide">{item.contentType}</span>
+            <span className="text-[9px] sm:text-[11px] font-semibold text-[#8c3a27] bg-[#f8eee8] px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md tracking-wide">{item.category}</span>
           </div>
 
           {/* Title */}
           <h3
             onClick={() => onQuickView && onQuickView(item)}
-            className="text-base font-bold text-[#26211e] font-outfit line-clamp-2 leading-snug mb-2 group-hover:text-[#be462a] transition-colors cursor-pointer"
+            className="text-xs sm:text-base font-bold text-[#26211e] font-outfit line-clamp-2 leading-snug mb-2 group-hover:text-[#be462a] transition-colors cursor-pointer"
           >
             {item.title}
           </h3>
 
           {/* Price */}
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-base font-bold text-[#8c3a27]">
+            <span className="text-sm sm:text-base font-bold text-[#8c3a27]">
               {displayPrice}
             </span>
             {item.price > 0 && (
-              <span className="text-xs text-[#8c9ba5] line-through font-normal">
+              <span className="hidden sm:inline text-xs text-[#8c9ba5] line-through font-normal">
                 {originalPrice}
               </span>
             )}
@@ -95,7 +97,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
 
         <div>
           {onQuickView && (
-            <button type="button" onClick={() => onQuickView(item)} className="w-full mb-2 py-2 text-sm font-semibold text-[#625a54] hover:text-[#8c3a27] border border-[#e6ded6] rounded-full transition-colors cursor-pointer">
+            <button type="button" onClick={() => onQuickView(item)} className="w-full mb-2 py-1.5 sm:py-2 text-[11px] sm:text-sm font-semibold text-[#625a54] hover:text-[#8c3a27] border border-[#e6ded6] rounded-full transition-colors cursor-pointer">
               Ver detalhes
             </button>
           )}
@@ -107,13 +109,13 @@ export const CourseCard: React.FC<CourseCardProps> = ({
                 alt={item.author.name}
                 className="w-6 h-6 rounded-full object-cover shrink-0"
               />
-              <span className="text-[13px] text-[#625a54] font-medium truncate">
-                (Author) {item.author.name}
+              <span className="text-[10px] sm:text-[13px] text-[#625a54] font-medium truncate">
+                {item.author.name}
               </span>
             </div>
 
             {/* Stars Rating */}
-            <div className="flex items-center gap-0.5 text-[#b89b66] shrink-0">
+            <div className="hidden sm:flex items-center gap-0.5 text-[#b89b66] shrink-0">
               {[...Array(5)].map((_, i) => (
                 <Star
                   key={i}
@@ -130,22 +132,15 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           </div>
 
           {/* 3. Direct Purchase Action Button */}
-          <button
-            onClick={() => onAddToCart(item)}
-            className="w-full bg-[#f4eee8] hover:bg-[#be462a] hover:text-white active:bg-[#8c301a] text-[#7b3524] text-sm font-semibold py-3 px-4 rounded-full flex items-center justify-center gap-2 cursor-pointer transition-colors"
-          >
-            {item.price === 0 ? (
-              <>
-                <Zap className="w-4 h-4 text-[#e05822] group-hover:text-white" />
-                <span>Aceder Grátis</span>
-              </>
-            ) : (
-              <>
-                <ShoppingBag className="w-4 h-4" />
-                <span>Comprar Agora</span>
-              </>
-            )}
-          </button>
+          {demoMode ? (
+            <button type="button" onClick={() => onQuickView?.(item)} className="w-full bg-[#f4eee8] text-[#7b3524] text-[10px] sm:text-sm font-semibold py-2 sm:py-3 px-2 sm:px-4 rounded-full flex items-center justify-center gap-1.5 cursor-pointer transition-colors">
+              <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Ver pré-visualização</span>
+            </button>
+          ) : (
+            <button onClick={() => onAddToCart(item)} className="w-full bg-[#f4eee8] hover:bg-[#be462a] hover:text-white active:bg-[#8c301a] text-[#7b3524] text-[11px] sm:text-sm font-semibold py-2.5 sm:py-3 px-2 sm:px-4 rounded-full flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer transition-colors">
+              {item.price === 0 ? <><Zap className="w-4 h-4 text-[#e05822] group-hover:text-white" /><span>Aceder Grátis</span></> : <><ShoppingBag className="w-4 h-4" /><span>Comprar Agora</span></>}
+            </button>
+          )}
         </div>
       </div>
     </div>

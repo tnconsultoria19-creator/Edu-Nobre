@@ -74,3 +74,55 @@
 }
 
 
+
+
+/* Shared accessible interaction states */
+@layer base {
+  button, [role="button"], a, input, select, textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:focus-visible, [role="button"]:focus-visible, a:focus-visible,
+  input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid #185a7d;
+    outline-offset: 3px;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]),
+  select, textarea {
+    border-color: #ded6ce;
+    transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):hover,
+  select:hover, textarea:hover {
+    border-color: #b7a69a;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):focus,
+  select:focus, textarea:focus {
+    border-color: #185a7d;
+    box-shadow: 0 0 0 3px rgba(24, 90, 125, 0.13);
+  }
+
+  input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] {
+    border-color: #b42318;
+    box-shadow: 0 0 0 2px rgba(180, 35, 24, 0.1);
+  }
+
+  button:disabled, [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.56;
+    box-shadow: none;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

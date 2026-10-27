@@ -7,6 +7,7 @@ interface ItemDetailsModalProps {
   onClose: () => void;
   onAddToCart: (item: CatalogItem) => void;
   onOpenFormModal: (need?: string) => void;
+  demoMode?: boolean;
 }
 
 export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
@@ -14,6 +15,7 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
   onClose,
   onAddToCart,
   onOpenFormModal,
+  demoMode = false,
 }) => {
   if (!item) return null;
 
@@ -116,28 +118,17 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                onAddToCart(item);
-                onClose();
-              }}
-              className="bg-[#1a1a1a] hover:bg-[#2e2e2e] text-white text-xs font-bold px-5 py-3 rounded-full transition-all cursor-pointer flex items-center gap-2"
-            >
-              <ShoppingBag className="w-4 h-4 text-[#f0a67d]" />
-              <span>Adicionar ao Carrinho</span>
-            </button>
-
-            <button
-              onClick={() => {
-                onClose();
-                onOpenFormModal('Comprar');
-              }}
-              className="bg-[#be462a] hover:bg-[#a53b21] text-white text-xs font-bold px-5 py-3 rounded-full transition-all shadow-md cursor-pointer"
-            >
-              Adquirir via WhatsApp
-            </button>
-          </div>
+          {demoMode ? (
+            <div className="flex max-w-[240px] items-center gap-2 text-xs leading-relaxed text-[#6b7280]">
+              <span className="rounded-full bg-[#efe1d6] px-3 py-2 font-bold text-[#8c3a27]">Pré-visualização</span>
+              <span>As compras ficam disponíveis quando o conteúdo real for publicado.</span>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+              <button onClick={() => { onAddToCart(item); onClose(); }} className="bg-[#1a1a1a] hover:bg-[#2e2e2e] text-white text-xs font-bold px-4 sm:px-5 py-3 rounded-full transition-all cursor-pointer flex items-center gap-2"><ShoppingBag className="w-4 h-4 text-[#f0a67d]" /><span>Adicionar ao Carrinho</span></button>
+              <button onClick={() => { onClose(); onOpenFormModal('Comprar'); }} className="bg-[#be462a] hover:bg-[#a53b21] text-white text-xs font-bold px-4 sm:px-5 py-3 rounded-full transition-all shadow-md cursor-pointer">Adquirir via WhatsApp</button>
+            </div>
+          )}
         </div>
       </div>
     </div>

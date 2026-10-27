@@ -16,6 +16,7 @@ import { AdminPortalModal } from './components/AdminPortalModal';
 import { UserLibraryModal } from './components/UserLibraryModal';
 
 import { CatalogItem, Category, ContentType, CartItem, User, AuditLogEntry } from './types';
+import { MOCK_CATALOG_ITEMS } from './data/mockData';
 import { BookOpen } from 'lucide-react';
 import { apiArchiveProduct, apiCreateOrder, apiCreateProduct, apiListAudit, apiListLibrary, apiListProducts, apiListUsers, apiLogout, apiMe, apiRemoveUser, apiReviewProduct, apiUpdateProduct, apiUpdateUser, getSessionToken, setSessionToken } from './lib/api';
 
@@ -44,6 +45,7 @@ export function App() {
 
   // Dynamic Catalog State
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
+  const [isDemoCatalog, setIsDemoCatalog] = useState(false);
 
   // Users List State for Admin Management
   const [usersList, setUsersList] = useState<User[]>([]);
@@ -86,8 +88,19 @@ export function App() {
   useEffect(() => {
     let active = true;
     apiListProducts()
-      .then(({ items }) => { if (active) setCatalogItems(items); })
-      .catch((error) => console.error('Edu-Nobre: não foi possível carregar o catálogo.', error));
+      .then(({ items }) => {
+        if (!active) return;
+        const usePreviewCatalogue = items.length === 0 && user?.role !== 'Administrador';
+        setCatalogItems(usePreviewCatalogue ? MOCK_CATALOG_ITEMS : items);
+        setIsDemoCatalog(usePreviewCatalogue);
+      })
+      .catch((error) => {
+        console.error('Edu-Nobre: não foi possível carregar o catálogo.', error);
+        if (active && user?.role !== 'Administrador') {
+          setCatalogItems(MOCK_CATALOG_ITEMS);
+          setIsDemoCatalog(true);
+        }
+      });
     return () => { active = false; };
   }, [user?.id, user?.role]);
 
@@ -405,7 +418,7 @@ export function App() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
                 {filteredCatalog.map((item) => (
                   <CourseCard
                     key={item.id}
@@ -415,6 +428,7 @@ export function App() {
                     isWishlisted={user ? wishlistIds.includes(item.id) : false}
                     onQuickView={(i) => setQuickViewItem(i)}
                     currency={currency}
+                    demoMode={isDemoCatalog}
                   />
                 ))}
               </div>
@@ -488,6 +502,7 @@ export function App() {
         onClose={() => setQuickViewItem(null)}
         onAddToCart={(item) => (user ? handleAddToCart(item) : setAuthOpen(true))}
         onOpenFormModal={handleOpenForm}
+        demoMode={isDemoCatalog}
       />
 
       <AdminPortalModal

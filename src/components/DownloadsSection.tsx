@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   FileText, 
   Download, 
@@ -13,7 +13,9 @@ import {
   ArrowRight,
   BookOpen,
   Share2,
-  HardDrive
+  HardDrive,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 export interface DownloadItem {
@@ -39,6 +41,8 @@ export const DownloadsSection: React.FC = () => {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('Todos');
+  const categoriesRef = useRef<HTMLDivElement>(null);
+  const scrollCategories = (direction: 'left' | 'right') => categoriesRef.current?.scrollBy({ left: direction === 'left' ? -220 : 220, behavior: 'smooth' });
 
   const downloads: DownloadItem[] = [
     {
@@ -191,51 +195,27 @@ export const DownloadsSection: React.FC = () => {
   };
 
   return (
-    <section id="downloads" className="py-16 sm:py-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 space-y-8">
+    <section id="downloads" className="py-10 sm:py-16">
+      <div className="max-w-7xl mx-auto px-3 sm:px-8 space-y-5 sm:space-y-7">
         
         {/* Elegant Section Header with Visual Divider */}
-        <div className="text-center max-w-3xl mx-auto space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#185a7d]/10 text-[#185a7d] text-xs font-bold uppercase tracking-wider">
-            <Download className="w-3.5 h-3.5" />
-            Recursos & Minutas Prontas
-          </div>
-          
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#0c2340] font-outfit tracking-tight">
-            Central de Downloads & Documentos
-          </h2>
-          
-          <p className="text-xs sm:text-sm text-[#5e6d77] leading-relaxed">
-            Aceda a modelos contratuais, planilhas financeiras automatizadas e manuais fiscais prontos para utilização imediata no seu negócio.
-          </p>
-
-          {/* Symmetrical divider line */}
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <div className="w-12 h-0.5 bg-gradient-to-r from-transparent to-[#185a7d]/40 rounded-full" />
-            <div className="w-2 h-2 rounded-full bg-[#185a7d]" />
-            <div className="w-12 h-0.5 bg-gradient-to-l from-transparent to-[#185a7d]/40 rounded-full" />
-          </div>
+        <div className="max-w-3xl mx-auto space-y-1.5">
+          <div className="inline-flex items-center gap-1.5 text-[#185a7d] text-[10px] sm:text-xs font-bold uppercase tracking-wider"><Download className="w-3.5 h-3.5" /> Recursos úteis</div>
+          <h2 className="text-xl sm:text-3xl font-extrabold text-[#0c2340] font-outfit tracking-tight">Central de Downloads</h2>
+          <p className="text-xs sm:text-sm text-[#5e6d77] leading-relaxed">Modelos e ficheiros práticos para apoiar o seu trabalho.</p>
         </div>
 
         {/* Category Pills */}
-        <div className="flex items-center justify-center gap-2 overflow-x-auto no-scrollbar py-1">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setFilterCategory(cat)}
-              className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                filterCategory === cat
-                  ? 'bg-[#185a7d] text-white shadow-sm'
-                  : 'bg-white/80 hover:bg-white text-[#0c2340] shadow-xs'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+        <div className="flex items-center gap-1.5">
+          <button type="button" onClick={() => scrollCategories('left')} aria-label="Categorias anteriores" className="shrink-0 w-8 h-8 rounded-full border border-[#e6ded6] bg-white text-[#574f49] flex items-center justify-center"><ChevronLeft className="w-4 h-4" /></button>
+          <div ref={categoriesRef} className="flex flex-1 min-w-0 items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1">
+            {categories.map((cat) => <button key={cat} onClick={() => setFilterCategory(cat)} className={`min-h-10 px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${filterCategory === cat ? 'bg-[#185a7d] text-white shadow-sm' : 'bg-white/80 hover:bg-white text-[#0c2340] shadow-xs border border-[#e6ded6]'}`}>{cat}</button>)}
+          </div>
+          <button type="button" onClick={() => scrollCategories('right')} aria-label="Mais categorias" className="shrink-0 w-8 h-8 rounded-full border border-[#e6ded6] bg-white text-[#574f49] flex items-center justify-center"><ChevronRight className="w-4 h-4" /></button>
         </div>
 
         {/* Downloads Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           {filteredDownloads.map((item) => {
             const isDownloading = downloadingId === item.id;
             const isSuccess = downloadSuccess === item.id;
@@ -246,7 +226,7 @@ export const DownloadsSection: React.FC = () => {
                 className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between overflow-hidden group border-0"
               >
                 {/* Full Bleed Card Image with Preview Overlay Button */}
-                <div className="relative w-full aspect-[16/10] overflow-hidden bg-slate-100">
+                <div className="relative w-full aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-slate-100">
                   <img
                     src={item.coverImage}
                     alt={item.title}
@@ -264,53 +244,34 @@ export const DownloadsSection: React.FC = () => {
                     GRÁTIS
                   </div>
 
-                  {/* Hover Quick Preview Button */}
-                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 p-4">
-                    <button
-                      onClick={() => setSelectedItem(item)}
-                      className="bg-white hover:bg-[#185a7d] hover:text-white text-[#0c2340] text-xs font-bold py-2 px-3.5 rounded-full flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      Pré-visualizar
-                    </button>
-                  </div>
                 </div>
 
                 {/* Content Details */}
-                <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
+                <div className="p-2.5 sm:p-4 flex-1 flex flex-col justify-between space-y-3">
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between text-[11px] text-[#8c9ba5]">
-                      <span>{item.category}</span>
-                      <span className="font-semibold text-slate-700">{item.fileSize}</span>
+                    <div className="flex items-center justify-between gap-1 text-[9px] sm:text-[11px] text-[#8c9ba5]">
+                      <span className="min-w-0 truncate">{item.category}</span>
+                      <span className="font-semibold text-slate-700 shrink-0">{item.fileSize}</span>
                     </div>
 
                     <h3 
                       onClick={() => setSelectedItem(item)}
-                      className="text-sm font-bold text-[#0c2340] group-hover:text-[#185a7d] line-clamp-2 leading-snug cursor-pointer transition-colors"
+                      className="text-xs sm:text-sm font-bold text-[#0c2340] group-hover:text-[#185a7d] line-clamp-2 leading-snug cursor-pointer transition-colors"
                     >
                       {item.title}
                     </h3>
 
-                    <p className="text-xs text-[#5e6d77] line-clamp-2 leading-relaxed">
+                    <p className="hidden sm:block text-xs text-[#5e6d77] line-clamp-1 leading-relaxed">
                       {item.description}
                     </p>
                   </div>
 
                   {/* Footer Meta & Buttons */}
-                  <div className="pt-2 border-t border-slate-100 space-y-3">
-                    <div className="flex items-center justify-between text-xs text-[#8c9ba5]">
-                      <span className="flex items-center gap-1">
-                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                        <strong className="text-slate-700">{item.rating}</strong>
-                      </span>
-                      <span>{item.downloadsCount.toLocaleString()} downloads</span>
-                    </div>
-
-                    {/* Action Buttons: Preview & Download */}
-                    <div className="flex items-center gap-2">
+                  <div className="pt-2 border-t border-slate-100">
+                    <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => setSelectedItem(item)}
-                        className="flex-1 bg-[#f4f6f8] hover:bg-[#ebf1f5] text-[#0c2340] text-xs font-bold py-2.5 px-3 rounded-full flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        className="flex-1 bg-[#f4f6f8] hover:bg-[#ebf1f5] text-[#0c2340] text-[10px] sm:text-xs font-bold py-2 px-1.5 sm:px-3 rounded-full flex items-center justify-center gap-1 transition-colors cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         Ver
@@ -319,7 +280,7 @@ export const DownloadsSection: React.FC = () => {
                       <button
                         onClick={(e) => handleDownload(item, e)}
                         disabled={isDownloading}
-                        className={`flex-1 text-xs font-bold py-2.5 px-3 rounded-full flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer ${
+                        className={`flex-1 text-[10px] sm:text-xs font-bold py-2 px-1.5 sm:px-3 rounded-full flex items-center justify-center gap-1 transition-all shadow-xs cursor-pointer ${
                           isSuccess
                             ? 'bg-emerald-600 text-white'
                             : isDownloading
@@ -383,7 +344,7 @@ export const DownloadsSection: React.FC = () => {
             </div>
 
             {/* Modal Body: Document Preview */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+            <div className="p-3 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 flex-1">
               
               {/* Document Overview Box */}
               <div className="bg-[#f4f7f9] p-4 rounded-2xl space-y-2">

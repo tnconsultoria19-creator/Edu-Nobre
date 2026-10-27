@@ -38,7 +38,9 @@ export const AdBannerSection: React.FC<AdBannerProps> = ({ onAdClick }) => {
   const currentAd = ads[adIndex];
 
   return (
-    <section className="py-8 sm:py-10">
+    <>
+      <div className="md:hidden px-4 py-2"><div className="rounded-md border border-[#e6ded6] bg-[#f4eee8] text-center py-2 text-[10px] font-extrabold tracking-[0.2em] text-[#8c3a27]">PUBLICIDADE</div></div>
+      <section className="hidden md:block py-8 sm:py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-8">
         {/* Compact, Highly Refined Ad Card */}
         <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${currentAd.bgGradient} text-white shadow-md transition-all duration-500 p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6`}>
@@ -96,6 +98,7 @@ export const AdBannerSection: React.FC<AdBannerProps> = ({ onAdClick }) => {
           </div>
         </div>
       </div>
-    </section>
+      </section>
+    </>
   );
 };
