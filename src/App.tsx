@@ -328,6 +328,19 @@ export function App() {
     }
   };
 
+  const handleOpenContent = (item: CatalogItem) => {
+    if (!user) {
+      setQuickViewItem(null);
+      setAuthOpen(true);
+      return;
+    }
+    const nextLibrary = [item, ...purchasedItems.filter((entry) => entry.id !== item.id)];
+    writeBrowserState('edunombre_demo_library_v1', nextLibrary);
+    setPurchasedItems(nextLibrary);
+    setQuickViewItem(null);
+    setUserLibraryOpen(true);
+  };
+
   const handleSuccessfulLogin = (signedInUser: User) => {
     setUser(signedInUser);
     writeBrowserState('edunombre_demo_user_v1', signedInUser);
@@ -404,6 +417,7 @@ export function App() {
         activeNavTab={activeNavTab}
         setActiveNavTab={setActiveNavTab}
         currentUser={user}
+        onLogout={handleLogout}
       />
 
       {/* 3. Hero Section with Background Image */}
@@ -500,7 +514,7 @@ export function App() {
         </div>
 
         {/* 7. Downloads & Resources Section with Previews */}
-        <DownloadsSection />
+        <DownloadsSection items={catalogItems} onOpenItem={handleOpenContent} />
       </div>
 
       {/* 6. Footer */}
@@ -544,6 +558,7 @@ export function App() {
         onClose={() => setQuickViewItem(null)}
         onAddToCart={(item) => (user ? handleAddToCart(item) : setAuthOpen(true))}
         onOpenFormModal={handleOpenForm}
+        onOpenContent={handleOpenContent}
         demoMode={isDemoCatalog}
       />
 
@@ -571,6 +586,7 @@ export function App() {
         isOpen={userLibraryOpen}
         onClose={() => setUserLibraryOpen(false)}
         purchasedItems={purchasedItems}
+        currentUser={user}
       />
     </div>
   );

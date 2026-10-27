@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Heart, ShoppingBag, Menu, X, ChevronRight, ShieldCheck, BookOpen, House } from 'lucide-react';
+import { Search, ShoppingBag, Menu, X, ChevronRight, ShieldCheck, BookOpen, House, LogOut } from 'lucide-react';
 import { CartItem, CatalogItem, User } from '../types';
 
 interface HeaderProps {
@@ -11,6 +11,7 @@ interface HeaderProps {
   onOpenAuth: () => void;
   onOpenAdminPortal: () => void;
   onOpenUserLibrary: () => void;
+  onLogout: () => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   catalogItems: CatalogItem[];
@@ -21,40 +22,15 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  cartItems,
-  wishlistCount,
-  onOpenCart,
-  onOpenWishlist,
-  onOpenFormModal,
-  onOpenAuth,
-  onOpenAdminPortal,
-  onOpenUserLibrary,
-  searchQuery,
-  setSearchQuery,
-  catalogItems,
-  onSelectItem,
-  activeNavTab,
-  setActiveNavTab,
-  currentUser,
+  cartItems, onOpenCart, onOpenFormModal, onOpenAuth, onOpenAdminPortal, onOpenUserLibrary, onLogout,
+  searchQuery, setSearchQuery, catalogItems, onSelectItem, activeNavTab, setActiveNavTab, currentUser,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
-
-  const totalCartCount = cartItems.reduce((acc, curr) => acc + curr.quantity, 0);
-  const totalCartPrice = cartItems.reduce(
-    (acc, curr) => acc + curr.item.price * curr.quantity,
-    0
-  );
-
-  const filteredSearchResults = searchQuery.trim()
-    ? catalogItems.filter(
-        (i) =>
-          i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          i.category.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+  const itemCount = cartItems.reduce((total, entry) => total + entry.quantity, 0);
+  const searchResults = searchQuery.trim()
+    ? catalogItems.filter((item) => item.title.toLowerCase().includes(searchQuery.toLowerCase()) || item.category.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 5)
     : [];
-
-  // Navigation options
   const navItems = [
     { label: 'Início', id: 'inicio' },
     { label: 'Cursos', id: 'catalogo-grid' },
@@ -65,199 +41,51 @@ export const Header: React.FC<HeaderProps> = ({
   const handleNavClick = (id: string) => {
     setActiveNavTab(id);
     setMobileMenuOpen(false);
-
-    // Scroll to relevant section if present (or handle logic)
     if (id === 'inicio') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    const elem = document.getElementById(id);
-    if (elem) {
-      elem.scrollIntoView({ behavior: 'smooth' });
-    }
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-[#e2d5c8] shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
-        {/* Brand Logo */}
-        <a
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          className="flex items-baseline group cursor-pointer"
-        >
-          <span className="text-2xl sm:text-3xl font-black tracking-tight text-[#1a1a1a] font-outfit">
-            Edunombre
-          </span>
-          <span className="text-[#be462a] text-3xl font-black leading-none ml-0.5">.</span>
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[#e6ded6]">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 flex items-center gap-3">
+        <a href="#" onClick={(event) => { event.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="shrink-0 flex items-baseline">
+          <span className="text-xl sm:text-2xl font-black tracking-tight text-[#1a1a1a]">Edunombre<span className="text-[#be462a]">.</span></span>
         </a>
 
-        {/* Desktop Navigation - 3 Items */}
-        <nav className="hidden md:flex items-center gap-6 text-[15px] font-semibold text-[#1a1a1a]">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleNavClick(item.id)}
-              aria-label={item.id === 'inicio' ? 'Início' : item.label}
-              title={item.id === 'inicio' ? 'Início' : item.label}
-              className={`transition-colors relative py-1 cursor-pointer ${
-                activeNavTab === item.id
-                  ? 'text-[#be462a] font-extrabold'
-                  : 'text-[#1a1a1a] hover:text-[#be462a]'
-              }`}
-            >
-              {item.id === 'inicio' ? <House className="w-5 h-5" aria-hidden="true" /> : item.label}
-              {activeNavTab === item.id && (
-                <span className="absolute bottom-0 left-0 w-full h-[2.5px] bg-[#be462a] rounded-full" />
-              )}
-            </button>
-          ))}
+        <nav className="hidden lg:flex items-center gap-5 ml-5 text-sm font-semibold text-[#1a1a1a]">
+          {navItems.map((item) => <button key={item.id} type="button" onClick={() => handleNavClick(item.id)} className={'relative py-2 ' + (activeNavTab === item.id ? 'text-[#be462a]' : 'hover:text-[#be462a]')}>{item.id === 'inicio' ? <House className="w-4 h-4" /> : item.label}{activeNavTab === item.id && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#be462a] rounded-full" />}</button>)}
         </nav>
 
-        {/* Search & Action Icons */}
-        <div className="flex items-center gap-3">
-          {/* Search Box */}
-          <div className="relative hidden sm:block w-44 lg:w-60">
-            <div className="relative flex items-center">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
-                placeholder="Pesquisar formação..."
-                className="w-full bg-[#f7f3ee] border border-[#e2d5c8] focus:border-[#be462a] rounded-full py-1.5 pl-4 pr-9 text-sm text-[#1a1a1a] focus:outline-none transition-all placeholder:text-[#858586]"
-              />
-              <button className="absolute right-2.5 text-[#858586] hover:text-[#be462a]">
-                <Search className="w-4 h-4" />
-              </button>
-            </div>
+        <div className="relative hidden md:block flex-1 max-w-xs ml-auto">
+          <input type="text" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} onFocus={() => setSearchFocused(true)} onBlur={() => window.setTimeout(() => setSearchFocused(false), 150)} placeholder="Pesquisar..." className="w-full rounded-full border border-[#e6ded6] bg-[#f7f3ee] py-2 pl-4 pr-9 text-xs focus:outline-none focus:border-[#be462a]" />
+          <Search className="absolute right-3 top-2.5 w-4 h-4 text-[#858586]" />
+          {searchFocused && searchResults.length > 0 && <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl border border-[#e6ded6] shadow-xl z-50 p-2">{searchResults.map((item) => <button key={item.id} type="button" onMouseDown={() => { onSelectItem(item); setSearchQuery(''); }} className="w-full flex items-center gap-2 p-2 rounded-lg text-left hover:bg-[#f7f3ee]"><img src={item.image} alt="" className="w-8 h-8 rounded-md object-cover" /><span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-[#1a1a1a] truncate">{item.title}</span><span className="block text-[10px] text-[#be462a]">{item.price === 0 ? 'Grátis' : item.price.toLocaleString('pt-AO') + ' Kz'}</span></span></button>)}</div>}
+        </div>
 
-            {/* Dropdown Results */}
-            {searchFocused && filteredSearchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#e2d5c8] rounded-xl shadow-xl z-50 max-h-72 overflow-y-auto p-2">
-                <div className="text-[10px] font-bold text-[#858586] px-2 py-1 uppercase">
-                  Resultados encontrados ({filteredSearchResults.length})
-                </div>
-                {filteredSearchResults.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      onSelectItem(item);
-                      setSearchQuery('');
-                    }}
-                    className="w-full text-left p-2 hover:bg-[#f7ebe4] rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
-                  >
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="w-8 h-8 rounded object-cover"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-bold text-[#1a1a1a] truncate">
-                        {item.title}
-                      </div>
-                      <div className="text-[10px] text-[#be462a] font-bold">
-                        {item.price === 0
-                          ? 'Grátis'
-                          : `${item.price.toLocaleString('pt-AO')} AOA`}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {currentUser && (
-            <>
-              <button onClick={onOpenWishlist} className="relative p-2 text-[#1a1a1a] hover:text-[#be462a] transition-colors cursor-pointer" title="Favoritos" aria-label="Favoritos">
-                <Heart className="w-5 h-5" />
-                {wishlistCount > 0 && <span className="absolute top-0 right-0 bg-[#be462a] text-white text-[11px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{wishlistCount}</span>}
-              </button>
-              <button onClick={onOpenCart} className="relative p-2 text-[#1a1a1a] hover:text-[#be462a] transition-colors cursor-pointer flex items-center gap-1.5" title="Carrinho de Compras" aria-label="Carrinho de Compras">
-                <div className="relative">
-                  <ShoppingBag className="w-5 h-5" />
-                  {totalCartCount > 0 && <span className="absolute -top-1.5 -right-1.5 bg-[#be462a] text-white text-[11px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{totalCartCount}</span>}
-                </div>
-                {totalCartPrice > 0 && <span className="hidden xl:inline text-sm font-semibold text-[#be462a]">{totalCartPrice.toLocaleString('pt-AO')} AOA</span>}
-              </button>
-            </>
+        <div className="ml-auto lg:ml-0 flex items-center gap-1.5 sm:gap-2">
+          <button type="button" onClick={onOpenCart} title="Carrinho" aria-label="Carrinho" className="relative w-9 h-9 rounded-full border border-[#e6ded6] flex items-center justify-center text-[#1a1a1a] hover:bg-[#f7f3ee]">
+            <ShoppingBag className="w-4 h-4" />
+            {itemCount > 0 && <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#be462a] text-white text-[9px] font-bold flex items-center justify-center">{itemCount}</span>}
+          </button>
+          {currentUser && <button type="button" onClick={onOpenUserLibrary} title="Minha área" aria-label="Minha área" className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-full bg-[#f3f6f8] text-[#185a7d] text-xs font-semibold hover:bg-[#e7eef2]"><BookOpen className="w-4 h-4" /><span className="hidden sm:inline">Minha área</span></button>}
+          {(currentUser?.role === 'Administrador' || currentUser?.role === 'Formador') && <button type="button" onClick={onOpenAdminPortal} title="Portal de gestão" aria-label="Portal de gestão" className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-full bg-[#0c2340] text-white text-xs font-semibold hover:bg-[#185a7d]"><ShieldCheck className="w-4 h-4" /><span className="hidden sm:inline">{currentUser.role === 'Administrador' ? 'Admin' : 'Portal'}</span></button>}
+          {currentUser ? (
+            <button type="button" onClick={onLogout} title="Terminar sessão" aria-label="Terminar sessão" className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-[#e6ded6] text-[#574f49] text-xs font-semibold hover:bg-[#f7f3ee]"><LogOut className="w-4 h-4" /><span className="hidden sm:inline">Sair</span></button>
+          ) : (
+            <button type="button" onClick={onOpenAuth} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-[#be462a] hover:bg-[#a53b21] text-white text-xs font-bold"><span>Entrar</span><ChevronRight className="w-3.5 h-3.5" /></button>
           )}
-
-          {/* User Library CTA */}
-          {currentUser && <button onClick={onOpenUserLibrary} className="hidden lg:inline-flex items-center gap-1.5 bg-[#f6f2ed] hover:bg-[#eee5dc] text-[#51463e] text-sm font-semibold px-3 py-2 rounded-full transition-all cursor-pointer border border-[#e6ded6]" title="Ver conteúdos comprados e descarregados"><BookOpen className="w-4 h-4 text-[#8c3a27]" /><span>Adquiridos</span></button>}
-
-          {/* Admin & Portal CTA */}
-          {currentUser?.role === 'Administrador' && <button onClick={onOpenAdminPortal} className="inline-flex items-center gap-1.5 bg-[#28231f] hover:bg-[#403831] text-white text-sm font-semibold px-3.5 py-2 rounded-full transition-all shadow-sm cursor-pointer" title="Abrir painel de administração"><ShieldCheck className="w-4 h-4 text-[#d8c29b]" /><span className="hidden sm:inline">Admin</span></button>}
-          {currentUser?.role === 'Formador' && <button onClick={onOpenAdminPortal} className="inline-flex items-center gap-1.5 bg-[#f4eee8] hover:bg-[#ebe1d7] text-[#7b3524] text-sm font-semibold px-3.5 py-2 rounded-full transition-colors cursor-pointer border border-[#e6ded6]" title="Abrir o portal do formador"><BookOpen className="w-4 h-4" /><span className="hidden sm:inline">Portal do Formador</span></button>}
-
-          {/* Account Login CTA */}
-          <button
-            onClick={onOpenAuth}
-            className="inline-flex items-center gap-1 bg-[#be462a] hover:bg-[#a53b21] text-white text-xs font-bold px-4 py-2 rounded-full transition-all shadow-sm hover:shadow cursor-pointer"
-          >
-            <span>{currentUser ? currentUser.name.split(' ')[0] : 'Entrar'}</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Mobile Hamburger Menu Toggle */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 text-[#1a1a1a] hover:text-[#be462a] cursor-pointer"
-          >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+          <button type="button" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label={mobileMenuOpen ? 'Fechar menu' : 'Abrir menu'} className="lg:hidden w-9 h-9 flex items-center justify-center text-[#1a1a1a] hover:bg-[#f7f3ee] rounded-full">{mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}</button>
         </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-t border-[#e2d5c8] px-4 py-4 space-y-3">
-          <div className="relative mb-3">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Pesquisar formação..."
-              className="w-full bg-[#f7f3ee] border border-[#e2d5c8] rounded-xl py-2 pl-4 pr-9 text-xs text-[#1a1a1a]"
-            />
-            <Search className="absolute right-3 top-2.5 w-4 h-4 text-[#858586]" />
-          </div>
-
-          <div className="space-y-1">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-between ${
-                  activeNavTab === item.id
-                    ? 'bg-[#f7ebe4] text-[#be462a]'
-                    : 'text-[#1a1a1a] hover:bg-gray-50'
-                }`}
-              >
-                <span>{item.id === 'inicio' ? <House className="w-5 h-5" aria-hidden="true" /> : item.label}</span>
-                {item.id !== 'inicio' && <ChevronRight className="w-4 h-4 text-[#858586]" />}
-              </button>
-            ))}
-          </div>
-
-          <div className="pt-2">
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onOpenFormModal();
-              }}
-              className="w-full bg-[#be462a] text-white text-xs font-bold py-2.5 rounded-xl text-center shadow"
-            >
-              Contactar / Agência & Formador
-            </button>
-          </div>
-        </div>
-      )}
+      {mobileMenuOpen && <div className="lg:hidden border-t border-[#e6ded6] bg-white px-3 py-3 space-y-2">
+        <div className="relative md:hidden"><input type="text" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Pesquisar..." className="w-full rounded-full border border-[#e6ded6] bg-[#f7f3ee] py-2 pl-4 pr-9 text-xs" /><Search className="absolute right-3 top-2.5 w-4 h-4 text-[#858586]" /></div>
+        {navItems.map((item) => <button key={item.id} type="button" onClick={() => handleNavClick(item.id)} className={'w-full flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-semibold ' + (activeNavTab === item.id ? 'bg-[#f7ebe4] text-[#be462a]' : 'text-[#1a1a1a] hover:bg-[#f7f3ee]')}>{item.id === 'inicio' ? 'Início' : item.label}<ChevronRight className="w-4 h-4" /></button>)}
+        <button type="button" onClick={() => { setMobileMenuOpen(false); onOpenFormModal(); }} className="w-full rounded-lg px-3 py-2.5 text-sm font-semibold text-[#185a7d] hover:bg-[#f3f6f8]">Contacto / Parcerias</button>
+      </div>}
     </header>
   );
 };

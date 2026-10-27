@@ -29,6 +29,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { CatalogItem, Category, ContentType, User, AuditLogEntry } from '../types';
+import { saveLocalAsset } from '../lib/localAssets';
 
 interface AdminPortalModalProps {
   isOpen: boolean;
@@ -94,6 +95,12 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
   const [formDescription, setFormDescription] = useState('Formação prática completa concebida para o mercado angolano.');
   const [formBadge, setFormBadge] = useState<any>('Novo');
   const [formFormat, setFormFormat] = useState<any>('Vídeo');
+  const [formYoutubeUrl, setFormYoutubeUrl] = useState('');
+  const [formContentUrl, setFormContentUrl] = useState('');
+  const [formAssetId, setFormAssetId] = useState('');
+  const [formAssetName, setFormAssetName] = useState('');
+  const [formAssetType, setFormAssetType] = useState('');
+  const [assetUploadMessage, setAssetUploadMessage] = useState('');
 
   useEffect(() => {
     if (currentUser?.role !== 'Administrador') {
@@ -151,6 +158,12 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
     setFormAuthorRole('Formador Certificado');
     setFormImage('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80');
     setFormDescription('Descrição detalhada do conteúdo e objetivos de aprendizagem.');
+    setFormYoutubeUrl('');
+    setFormContentUrl('');
+    setFormAssetId('');
+    setFormAssetName('');
+    setFormAssetType('');
+    setAssetUploadMessage('');
     setActiveTab('add_edit');
   };
 
@@ -167,6 +180,12 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
     setFormDescription(item.description);
     setFormBadge(item.badge || 'Novo');
     setFormFormat(item.format || 'Vídeo');
+    setFormYoutubeUrl(item.youtubeUrl || '');
+    setFormContentUrl(item.contentUrl || '');
+    setFormAssetId(item.resourceAssetId || '');
+    setFormAssetName(item.resourceAssetName || '');
+    setFormAssetType(item.resourceAssetType || '');
+    setAssetUploadMessage(item.resourceAssetName ? 'Ficheiro associado: ' + item.resourceAssetName : '');
     setActiveTab('add_edit');
   };
 
@@ -206,6 +225,11 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
       ratingCount: editingItem ? editingItem.ratingCount : 1,
       image: formImage || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80',
       description: formDescription,
+      youtubeUrl: formYoutubeUrl.trim() || undefined,
+      contentUrl: formContentUrl.trim() || undefined,
+      resourceAssetId: formAssetId || undefined,
+      resourceAssetName: formAssetName || undefined,
+      resourceAssetType: formAssetType || undefined,
       // If Admin creates/edits -> Auto Publish. If Creator submits -> Set to Pendente!
       approvalStatus: currentUser?.role === 'Administrador' ? 'Publicado' : 'Pendente',
       creatorEmail: editingItem?.creatorEmail || currentUser?.email,
@@ -220,9 +244,11 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
       return;
     }
 
-    alert(currentUser?.role === 'Administrador'
-      ? 'Item guardado no servidor e enviado para o catálogo.'
-      : 'Submissão guardada no servidor. Aguarda aprovação do Administrador.');
+    alert(demoMode
+      ? 'Conteúdo guardado neste navegador (modo de demonstração).'
+      : currentUser?.role === 'Administrador'
+      ? 'Conteúdo guardado e publicado no catálogo.'
+      : 'Submissão guardada. Aguarda aprovação do Administrador.');
 
     setActiveTab(currentUser?.role === 'Administrador' ? 'catalog' : 'creator');
   };
@@ -680,6 +706,34 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                     />
                   </div>
 
+                  <div className="space-y-3 sm:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">Vídeo do YouTube (opcional)</label>
+                      <input type="url" value={formYoutubeUrl} onChange={(e) => setFormYoutubeUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-[#0c2340] focus:outline-none focus:border-[#185a7d]" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">URL pública de PDF ou slides (opcional)</label>
+                      <input type="url" value={formContentUrl} onChange={(e) => setFormContentUrl(e.target.value)} placeholder="https://..." className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-[#0c2340] focus:outline-none focus:border-[#185a7d]" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">Carregar ficheiro</label>
+                      <input type="file" accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip,.txt" onChange={async (e) => {
+                        const file = e.currentTarget.files?.[0];
+                        if (!file) return;
+                        try {
+                          const saved = await saveLocalAsset(file);
+                          setFormAssetId(saved.id);
+                          setFormAssetName(saved.name);
+                          setFormAssetType(saved.type);
+                          setAssetUploadMessage('Ficheiro associado: ' + saved.name + ' (' + Math.max(1, Math.round(saved.size / 1024)) + ' KB)');
+                        } catch (error) {
+                          alert(error instanceof Error ? error.message : 'Não foi possível guardar o ficheiro.');
+                        }
+                      }} className="w-full text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-[#e8eef2] file:px-3 file:py-2 file:text-xs file:font-semibold file:text-[#0c2340]" />
+                      {assetUploadMessage && <p className="text-[11px] text-emerald-700">{assetUploadMessage}</p>}
+                      <p className="text-[10px] leading-relaxed text-slate-500">Os ficheiros carregados ficam neste navegador durante o modo de demonstração. Vídeos devem usar uma ligação do YouTube.</p>
+                    </div>
+                  </div>
                   <div className="space-y-1 sm:col-span-2">
                     <label className="text-xs font-bold text-slate-700">Descrição Completa</label>
                     <textarea

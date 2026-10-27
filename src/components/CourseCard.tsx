@@ -42,7 +42,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       {/* 1. Full-Bleed Edge-to-Edge Product Image (0px padding, no grey box, full width) */}
       <div 
         onClick={() => onQuickView && onQuickView(item)}
-        className="relative w-full aspect-[16/10] sm:aspect-[4/3] overflow-hidden cursor-pointer shrink-0 bg-[#f3eee8]"
+        className="relative w-full aspect-[16/9] overflow-hidden cursor-pointer shrink-0 bg-[#f3eee8]"
       >
         <img
           src={item.image}
@@ -66,7 +66,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       </div>
 
       {/* 2. Text Content & Actions */}
-      <div className="p-2.5 sm:p-5 flex-1 flex flex-col justify-between">
+      <div className="p-2.5 sm:p-3.5 flex-1 flex flex-col justify-between">
         <div>
           {/* Tags */}
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
@@ -106,7 +106,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Ver pré-visualização</span>
             </button>
           ) : (
-            <button onClick={() => onAddToCart(item)} className="w-full bg-[#f4eee8] hover:bg-[#be462a] hover:text-white active:bg-[#8c301a] text-[#7b3524] text-[11px] sm:text-sm font-semibold py-2.5 sm:py-3 px-2 sm:px-4 rounded-full flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer transition-colors">
+            <button onClick={() => onAddToCart(item)} className="w-full bg-[#f4eee8] hover:bg-[#be462a] hover:text-white active:bg-[#8c301a] text-[#7b3524] text-[11px] sm:text-sm font-semibold py-2 sm:py-2.5 px-2 sm:px-3 rounded-full flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer transition-colors">
               {item.price === 0 ? <><Zap className="w-4 h-4 text-[#e05822] group-hover:text-white" /><span>Aceder Grátis</span></> : <><ShoppingBag className="w-4 h-4" /><span>Comprar Agora</span></>}
             </button>
           )}

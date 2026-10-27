@@ -1,428 +1,111 @@
-import React, { useRef, useState } from 'react';
-import { 
-  FileText, 
-  Download, 
-  Eye, 
-  CheckCircle, 
-  FileSpreadsheet, 
-  FileCheck, 
-  FileCode, 
-  Star, 
-  Sparkles, 
-  X, 
-  ArrowRight,
-  BookOpen,
-  Share2,
-  HardDrive,
-  ChevronLeft,
-  ChevronRight
-} from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Download, FileText, PlayCircle, ExternalLink } from 'lucide-react';
+import { CatalogItem } from '../types';
+import { getLocalAsset } from '../lib/localAssets';
 
-export interface DownloadItem {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  fileType: 'PDF' | 'XLSX' | 'DOCX' | 'PPTX';
-  fileSize: string;
-  downloadsCount: number;
-  rating: number;
-  author: string;
-  publishedDate: string;
-  isFree: boolean;
-  coverImage: string;
-  previewPages: string[];
-  tableOfContents?: string[];
-  summary: string;
+interface DownloadsSectionProps {
+  items: CatalogItem[];
+  onOpenItem: (item: CatalogItem) => void;
 }
 
-export const DownloadsSection: React.FC = () => {
-  const [selectedItem, setSelectedItem] = useState<DownloadItem | null>(null);
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
-  const [filterCategory, setFilterCategory] = useState<string>('Todos');
-  const categoriesRef = useRef<HTMLDivElement>(null);
-  const scrollCategories = (direction: 'left' | 'right') => categoriesRef.current?.scrollBy({ left: direction === 'left' ? -220 : 220, behavior: 'smooth' });
+const shortDescription = (item: CatalogItem) => {
+  const source = (item.subtitle || item.description || 'Material de apoio').trim();
+  const firstSentence = source.split(/[.!?]/)[0].trim();
+  return firstSentence.length > 62 ? firstSentence.slice(0, 59).trimEnd() + '…' : firstSentence;
+};
 
-  const downloads: DownloadItem[] = [
-    {
-      id: 'd1',
-      title: 'Minuta Padrão de Contrato Individual de Trabalho (Angola)',
-      description: 'Modelo jurídico pronto a usar de acordo com a Lei Geral do Trabalho de Angola nº 12/23. Inclui cláusulas de confidencialidade e período experimental.',
-      category: 'Modelos Jurídicos',
-      fileType: 'DOCX',
-      fileSize: '1.4 MB',
-      downloadsCount: 1420,
-      rating: 4.9,
-      author: 'Dra. Sarah Fontenot & TN Jurídico',
-      publishedDate: 'Março 2024',
-      isFree: true,
-      coverImage: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=600&q=80',
-      previewPages: [
-        'CONTRATO DE TRABALHO POR TEMPO INDETERMINADO\n\nEntre:\n1. EMPREGADOR: Sociedade Comercial...\n2. TRABALHADOR: Sr(a)...\n\nCLÁUSULA 1ª (Objecto e Categoria Profissional)\nO Trabalhador é admitido ao serviço da Empregadora para exercer as funções...',
-        'CLÁUSULA 2ª (Local e Horário de Trabalho)\n1. A prestação de trabalho decorrerá nas instalações de Luanda...\n2. O horário normal de trabalho é de 40 horas semanais...',
-        'CLÁUSULA 3ª (Retribuição)\n1. O Trabalhador auferirá o salário base mensal de...',
-      ],
-      tableOfContents: [
-        '1. Qualificação das Partes',
-        '2. Cláusulas Obrigatórias e Remuneração',
-        '3. Cláusula de Confidencialidade e Não-Concorrência',
-        '4. Regime de Férias e Subsídios',
-        '5. Rescisão e Foro Competente'
-      ],
-      summary: 'Instrumento essencial para departamentos de RH e gestores de empresas em Angola garantirem conformidade imediata com a nova legislação laboral.',
-    },
-    {
-      id: 'd2',
-      title: 'Planilha Completa de Projeção Financeira & Fluxo de Caixa 2024/2025',
-      description: 'Folha de cálculo automatizada no Excel com DRE, Balanço Projetado, Ponto de Equilíbrio, Indicadores de Rentabilidade (VAL, TIR) e gráficos dinâmicos.',
-      category: 'Gestão Financeira',
-      fileType: 'XLSX',
-      fileSize: '3.8 MB',
-      downloadsCount: 2840,
-      rating: 5.0,
-      author: 'Prof. Joan Martinez',
-      publishedDate: 'Fevereiro 2024',
-      isFree: true,
-      coverImage: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=600&q=80',
-      previewPages: [
-        'PAINEL EXECUTIVO:\n- Faturação Anual Prevista: 45.000.000 Kz\n- Margem EBITDA: 28.4%\n- Ponto de Equilíbrio (Break-even): Mês 4\n- Payback Descontado: 1.8 Anos',
-        'FOLHA 1: Pressupostos de Vendas & Preços Médios\nFOLHA 2: Custos Fixos, Variáveis e Imposto Industrial\nFOLHA 3: Demonstração de Resultados (DRE)',
-      ],
-      tableOfContents: [
-        '1. Dashboard de Indicadores Principais',
-        '2. Mapeamento de Receitas e Custos',
-        '3. Demonstração de Fluxo de Caixa Direto',
-        '4. Análise de Cenários (Otimista, Base, Pessimista)',
-        '5. Relatório Pronto para Apresentação a Bancos e Investidores'
-      ],
-      summary: 'Criada para startups, PMEs e consultores apresentarem planos financeiros estruturados com rigor internacional.',
-    },
-    {
-      id: 'd3',
-      title: 'Guia Prático do Imposto sobre o Valor Acrescentado (IVA) em Angola',
-      description: 'Manual passo-a-passo sobre regras de dedutibilidade, mapa de fornecedores, regimes de enquadramento da AGT e calendarização de obrigações fiscais.',
-      category: 'Fiscalidade & Contabilidade',
-      fileType: 'PDF',
-      fileSize: '4.2 MB',
-      downloadsCount: 3190,
-      rating: 4.8,
-      author: 'Erika Walker (Especialista Tributária)',
-      publishedDate: 'Janeiro 2024',
-      isFree: true,
-      coverImage: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80',
-      previewPages: [
-        'MANUAL DO IVA ANGOLANO - EDIÇÃO ATUALIZADA\n\nCapítulo 1: Incidência Objetiva e Subjetiva\nO IVA incide sobre as transmissões de bens e prestações de serviços efetuadas no território nacional a título oneroso...',
-        'Capítulo 2: Regimes de Enquadramento\n- Regime Geral\n- Regime Simplificado\n- Regime de Exclusão...',
-      ],
-      tableOfContents: [
-        '1. Princípios Gerais e Legislação Aplicável',
-        '2. Operações Isentas com e sem Direito à Dedução',
-        '3. Obrigações Declarativas e Submissão no Portal AGT',
-        '4. Erros Frequentes e Como Evitar Coimas'
-      ],
-      summary: 'Referência rápida para contabilistas, gestores e estudantes dominarem o imposto mais dinâmico do sistema tributário angolano.',
-    },
-    {
-      id: 'd4',
-      title: 'Template de Pitch Deck de Alto Impacto para Captação de Investimento',
-      description: 'Apresentação profissional com 15 slides estruturados (Problema, Solução, Mercado, Modelo de Negócio, Tração, Equipa e Pedido de Financiamento).',
-      category: 'Empreendedorismo',
-      fileType: 'PPTX',
-      fileSize: '8.1 MB',
-      downloadsCount: 1950,
-      rating: 4.9,
-      author: 'TN Consultoria Estratégica',
-      publishedDate: 'Abril 2024',
-      isFree: true,
-      coverImage: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=600&q=80',
-      previewPages: [
-        'SLIDE 1: Capa & Proposta Única de Valor\nSLIDE 2: O Problema Real do Mercado em África\nSLIDE 3: A Nossa Solução & Vantagem Competitiva\nSLIDE 4: Tamanho do Mercado (TAM, SAM, SOM)...',
-      ],
-      tableOfContents: [
-        'Slide 1-3: Introdução e Oportunidade',
-        'Slide 4-7: Produto, Tecnologia e Validação',
-        'Slide 8-11: Modelo de Receitas e Estratégia Go-To-Market',
-        'Slide 12-15: Finanças, Equipa e Contactos'
-      ],
-      summary: 'Utilizado por empreendedores de sucesso para apresentar ideias perante fundos de capital de risco e programas de aceleração.',
-    },
-  ];
+export const DownloadsSection: React.FC<DownloadsSectionProps> = ({ items, onOpenItem }) => {
+  const [filterCategory, setFilterCategory] = useState('Todos');
+  const resources = useMemo(() => items.filter((item) =>
+    item.contentType === 'Arquivos' || Boolean(item.resourceAssetId || item.contentUrl || item.youtubeUrl) ||
+    item.format === 'PDF Livre' || item.format === 'Ficheiros'
+  ), [items]);
+  const categories = ['Todos', ...Array.from(new Set(resources.map((item) => item.category))).sort()];
+  const filteredResources = filterCategory === 'Todos'
+    ? resources
+    : resources.filter((item) => item.category === filterCategory);
 
-  const categories = ['Todos', 'Modelos Jurídicos', 'Gestão Financeira', 'Fiscalidade & Contabilidade', 'Empreendedorismo'];
-
-  const filteredDownloads = filterCategory === 'Todos'
-    ? downloads
-    : downloads.filter(d => d.category === filterCategory);
-
-  const handleDownload = (item: DownloadItem, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setDownloadingId(item.id);
-    
-    // Simulate instant secure file packaging and trigger download
-    setTimeout(() => {
-      setDownloadingId(null);
-      setDownloadSuccess(item.id);
-      
-      // Create a dummy download file simulation
-      const element = document.createElement("a");
-      const file = new Blob([
-        `Documento Oficial TN Consultoria:\n${item.title}\n\nAutor: ${item.author}\nData: ${item.publishedDate}\n\nResumo:\n${item.summary}\n\nObrigado por utilizar os recursos da TN Consultoria.`
-      ], {type: 'text/plain;charset=utf-8'});
-      element.href = URL.createObjectURL(file);
-      element.download = `${item.title.replace(/[^a-zA-Z0-9]/g, '_')}.${item.fileType.toLowerCase()}`;
-      document.body.appendChild(element);
-      element.click();
-      document.body.removeChild(element);
-
-      setTimeout(() => {
-        setDownloadSuccess(null);
-      }, 4000);
-    }, 1000);
-  };
-
-  const getFormatBadge = (type: DownloadItem['fileType']) => {
-    switch(type) {
-      case 'PDF':
-        return <span className="bg-red-100 text-red-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md flex items-center gap-1"><FileText className="w-3 h-3" /> PDF</span>;
-      case 'XLSX':
-        return <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-md flex items-center gap-1"><FileSpreadsheet className="w-3 h-3" /> EXCEL</span>;
-      case 'DOCX':
-        return <span className="bg-blue-100 text-blue-800 text-[10px] font-extrabold px-2 py-0.5 rounded-md flex items-center gap-1"><FileCheck className="w-3 h-3" /> WORD</span>;
-      case 'PPTX':
-        return <span className="bg-amber-100 text-amber-800 text-[10px] font-extrabold px-2 py-0.5 rounded-md flex items-center gap-1"><FileCode className="w-3 h-3" /> POWERPOINT</span>;
+  const handleDownload = async (item: CatalogItem) => {
+    if (item.resourceAssetId) {
+      try {
+        const asset = await getLocalAsset(item.resourceAssetId);
+        if (!asset) {
+          alert('O ficheiro local já não está disponível neste navegador. Carregue-o novamente no portal.');
+          return;
+        }
+        const url = URL.createObjectURL(asset.blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = asset.name || item.resourceAssetName || item.title;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+      } catch (error) {
+        alert(error instanceof Error ? error.message : 'Não foi possível descarregar o ficheiro.');
+      }
+      return;
     }
+    if (item.contentUrl) {
+      window.open(item.contentUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    onOpenItem(item);
   };
 
   return (
-    <section id="downloads" className="py-10 sm:py-16">
-      <div className="max-w-7xl mx-auto px-3 sm:px-8 space-y-5 sm:space-y-7">
-        
-        {/* Elegant Section Header with Visual Divider */}
-        <div className="max-w-3xl mx-auto space-y-1.5">
-          <h2 className="text-xl sm:text-3xl font-extrabold text-[#0c2340] font-outfit tracking-tight">Downloads</h2>
+    <section id="downloads" className="py-8 sm:py-12">
+      <div className="max-w-7xl mx-auto px-3 sm:px-8 space-y-4">
+        <div className="flex items-end justify-between gap-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#0c2340] font-outfit tracking-tight">Downloads</h2>
+          <span className="text-xs text-[#6e8090]">{resources.length} materiais</span>
         </div>
 
-        {/* Category Pills */}
-        <div className="flex items-center gap-1.5">
-          <button type="button" onClick={() => scrollCategories('left')} aria-label="Categorias anteriores" className="shrink-0 w-8 h-8 rounded-full border border-[#e6ded6] bg-white text-[#574f49] flex items-center justify-center"><ChevronLeft className="w-4 h-4" /></button>
-          <div ref={categoriesRef} className="flex flex-1 min-w-0 items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1">
-            {categories.map((cat) => <button key={cat} onClick={() => setFilterCategory(cat)} className={`min-h-10 px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${filterCategory === cat ? 'bg-[#185a7d] text-white shadow-sm' : 'bg-white/80 hover:bg-white text-[#0c2340] shadow-xs border border-[#e6ded6]'}`}>{cat}</button>)}
-          </div>
-          <button type="button" onClick={() => scrollCategories('right')} aria-label="Mais categorias" className="shrink-0 w-8 h-8 rounded-full border border-[#e6ded6] bg-white text-[#574f49] flex items-center justify-center"><ChevronRight className="w-4 h-4" /></button>
-        </div>
-
-        {/* Downloads Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-          {filteredDownloads.map((item) => {
-            const isDownloading = downloadingId === item.id;
-            const isSuccess = downloadSuccess === item.id;
-
-            return (
-              <div
-                key={item.id}
-                className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between overflow-hidden group border-0"
-              >
-                {/* Full Bleed Card Image with Preview Overlay Button */}
-                <div className="relative w-full aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-slate-100">
-                  <img
-                    src={item.coverImage}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 block"
-                    referrerPolicy="no-referrer"
-                  />
-                  
-                  {/* File Format Badge */}
-                  <div className="absolute top-3 left-3 z-10 shadow-xs">
-                    {getFormatBadge(item.fileType)}
-                  </div>
-
-                  {/* Free badge */}
-                  <div className="absolute top-3 right-3 z-10 bg-emerald-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-xs">
-                    GRÁTIS
-                  </div>
-
-                </div>
-
-                {/* Content Details */}
-                <div className="p-2.5 sm:p-4 flex-1 flex flex-col justify-between space-y-3">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-1 text-[9px] sm:text-[11px] text-[#8c9ba5]">
-                      <span className="min-w-0 truncate">{item.category}</span>
-                      <span className="font-semibold text-slate-700 shrink-0">{item.fileSize}</span>
-                    </div>
-
-                    <h3 
-                      onClick={() => setSelectedItem(item)}
-                      className="text-xs sm:text-sm font-bold text-[#0c2340] group-hover:text-[#185a7d] line-clamp-2 leading-snug cursor-pointer transition-colors"
-                    >
-                      {item.title}
-                    </h3>
-
-                    <p className="hidden sm:block text-xs text-[#5e6d77] line-clamp-1 leading-relaxed">
-                      {item.description}
-                    </p>
-                  </div>
-
-                  {/* Footer Meta & Buttons */}
-                  <div className="pt-2 border-t border-slate-100">
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => setSelectedItem(item)}
-                        className="flex-1 bg-[#f4f6f8] hover:bg-[#ebf1f5] text-[#0c2340] text-[10px] sm:text-xs font-bold py-2 px-1.5 sm:px-3 rounded-full flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        Ver
-                      </button>
-
-                      <button
-                        onClick={(e) => handleDownload(item, e)}
-                        disabled={isDownloading}
-                        className={`flex-1 text-[10px] sm:text-xs font-bold py-2 px-1.5 sm:px-3 rounded-full flex items-center justify-center gap-1 transition-all shadow-xs cursor-pointer ${
-                          isSuccess
-                            ? 'bg-emerald-600 text-white'
-                            : isDownloading
-                            ? 'bg-slate-300 text-slate-600'
-                            : 'bg-[#185a7d] hover:bg-[#12415b] text-white'
-                        }`}
-                      >
-                        {isSuccess ? (
-                          <>
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            Baixado!
-                          </>
-                        ) : isDownloading ? (
-                          <>
-                            <div className="w-3.5 h-3.5 border-2 border-white/60 border-t-transparent rounded-full animate-spin" />
-                            A gerar...
-                          </>
-                        ) : (
-                          <>
-                            <Download className="w-3.5 h-3.5" />
-                            Baixar
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Interactive Document Preview Modal */}
-      {selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div 
-            className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Top Header */}
-            <div className="p-4 sm:p-6 bg-[#f8fafc] border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {getFormatBadge(selectedItem.fileType)}
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-[#0c2340] leading-snug line-clamp-1">
-                    {selectedItem.title}
-                  </h3>
-                  <p className="text-xs text-[#6e8090]">
-                    Por {selectedItem.author} • {selectedItem.fileSize} • {selectedItem.publishedDate}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setSelectedItem(null)}
-                className="w-8 h-8 rounded-full bg-white hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors cursor-pointer shadow-xs"
-              >
-                <X className="w-4 h-4" />
+        {resources.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            {categories.map((category) => (
+              <button key={category} type="button" onClick={() => setFilterCategory(category)}
+                className={'shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold border transition-colors ' +
+                  (filterCategory === category ? 'bg-[#185a7d] text-white border-[#185a7d]' : 'bg-white text-[#0c2340] border-[#e2ded6] hover:bg-[#f7f3ee]')}>
+                {category}
               </button>
-            </div>
-
-            {/* Modal Body: Document Preview */}
-            <div className="p-3 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 flex-1">
-              
-              {/* Document Overview Box */}
-              <div className="bg-[#f4f7f9] p-4 rounded-2xl space-y-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#185a7d]">
-                  Resumo do Recurso
-                </span>
-                <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-                  {selectedItem.summary}
-                </p>
-              </div>
-
-              {/* Table of Contents */}
-              {selectedItem.tableOfContents && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#0c2340]">
-                    Índice & Conteúdo do Arquivo
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {selectedItem.tableOfContents.map((toc, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-xs text-slate-600 bg-white p-2.5 rounded-xl border border-slate-100">
-                        <CheckCircle className="w-3.5 h-3.5 text-[#185a7d] shrink-0" />
-                        <span>{toc}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Live Page Sample Excerpt */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#0c2340]">
-                    Pré-visualização do Documento
-                  </h4>
-                  <span className="text-[11px] text-slate-400">Páginas de amostra</span>
-                </div>
-
-                <div className="bg-[#1e293b] text-slate-200 p-5 rounded-2xl font-mono text-xs leading-relaxed space-y-4 max-h-60 overflow-y-auto shadow-inner border border-slate-800">
-                  {selectedItem.previewPages.map((page, idx) => (
-                    <div key={idx} className="space-y-1 pb-3 border-b border-slate-700/60 last:border-0 last:pb-0">
-                      <span className="text-[10px] text-amber-400 font-bold block mb-1">
-                        [PÁGINA {idx + 1}]
-                      </span>
-                      <pre className="whitespace-pre-wrap font-sans text-xs text-slate-300">
-                        {page}
-                      </pre>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Bottom Footer Action */}
-            <div className="p-4 sm:p-6 bg-[#f8fafc] border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="text-xs text-slate-500 flex items-center gap-2">
-                <HardDrive className="w-4 h-4 text-[#185a7d]" />
-                <span>Formato: <strong>.{selectedItem.fileType.toLowerCase()}</strong></span>
-                <span>•</span>
-                <span>{selectedItem.downloadsCount} descarregamentos</span>
-              </div>
-
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <button
-                  onClick={() => setSelectedItem(null)}
-                  className="px-5 py-2.5 rounded-full text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
-                >
-                  Fechar
-                </button>
-                <button
-                  onClick={() => handleDownload(selectedItem)}
-                  className="flex-1 sm:flex-none px-6 py-2.5 rounded-full text-xs font-bold bg-[#185a7d] hover:bg-[#12415b] text-white shadow-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  Descarregar Grátis
-                </button>
-              </div>
-            </div>
+            ))}
           </div>
-        </div>
-      )}
+        )}
+
+        {filteredResources.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-[#d9e0e6] bg-white px-4 py-6 text-sm text-[#6e8090]">
+            Os materiais publicados pelo administrador aparecerão aqui.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {filteredResources.map((item) => {
+              const hasFile = Boolean(item.resourceAssetId || item.contentUrl);
+              const isVideo = Boolean(item.youtubeUrl);
+              return (
+                <article key={item.id} className="bg-white rounded-xl border border-[#e6ded6] p-3 flex gap-3 min-w-0 hover:border-[#b7c9d5] hover:shadow-sm transition-all">
+                  <img src={item.image} alt="" className="w-[76px] h-[88px] rounded-lg object-cover shrink-0 bg-[#f1f4f6]" loading="lazy" />
+                  <div className="min-w-0 flex-1 flex flex-col">
+                    <span className="text-[10px] font-semibold text-[#185a7d] truncate">{item.category} · {isVideo ? 'Vídeo' : item.resourceAssetName ? item.resourceAssetName.split('.').pop()?.toUpperCase() : item.contentType}</span>
+                    <h3 className="mt-1 text-sm font-semibold text-[#0c2340] leading-snug line-clamp-2">{item.title}</h3>
+                    <p className="mt-1 text-[11px] text-[#6e8090] leading-snug line-clamp-1">{shortDescription(item)}</p>
+                    <div className="mt-auto pt-2 flex gap-2">
+                      <button type="button" onClick={() => onOpenItem(item)} className="inline-flex items-center gap-1 text-xs font-semibold text-[#185a7d] hover:underline">
+                        {isVideo ? <PlayCircle className="w-3.5 h-3.5" /> : <ExternalLink className="w-3.5 h-3.5" />} Abrir
+                      </button>
+                      <button type="button" disabled={!hasFile} onClick={() => void handleDownload(item)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold disabled:text-slate-300 text-[#8c3a27] hover:underline disabled:no-underline disabled:cursor-not-allowed"
+                        title={hasFile ? 'Descarregar o ficheiro' : 'Ainda não há ficheiro associado'}>
+                        <Download className="w-3.5 h-3.5" /> Baixar
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </section>
   );
 };

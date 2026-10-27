@@ -8,6 +8,7 @@ interface ItemDetailsModalProps {
   onAddToCart: (item: CatalogItem) => void;
   onOpenFormModal: (need?: string) => void;
   demoMode?: boolean;
+  onOpenContent?: (item: CatalogItem) => void;
 }
 
 export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
@@ -16,6 +17,7 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
   onAddToCart,
   onOpenFormModal,
   demoMode = false,
+  onOpenContent,
 }) => {
   if (!item) return null;
 
@@ -119,9 +121,11 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
           </div>
 
           {demoMode ? (
-            <div className="flex max-w-[240px] items-center gap-2 text-xs leading-relaxed text-[#6b7280]">
-              <span className="rounded-full bg-[#efe1d6] px-3 py-2 font-bold text-[#8c3a27]">Pré-visualização</span>
-              <span>As compras ficam disponíveis quando o conteúdo real for publicado.</span>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <span className="rounded-full bg-[#efe1d6] px-3 py-2 text-[11px] font-semibold text-[#8c3a27]">Modo de teste</span>
+              <button type="button" onClick={() => onOpenContent?.(item)} className="bg-[#185a7d] hover:bg-[#12415b] text-white text-xs font-bold px-4 py-3 rounded-full transition-all cursor-pointer flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" /> Abrir conteúdo
+              </button>
             </div>
           ) : (
             <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">

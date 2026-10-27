@@ -51,6 +51,12 @@ export interface CatalogItem {
   ratingCount?: number;
   image: string;
   description: string;
+  // Learning resource links and optional browser-local demo upload.
+  youtubeUrl?: string;
+  contentUrl?: string;
+  resourceAssetId?: string;
+  resourceAssetName?: string;
+  resourceAssetType?: string;
   modules?: CourseModule[];
   level?: 'Iniciante' | 'Intermédio' | 'Avançado' | 'Todos os Níveis';
   approvalStatus?: 'Publicado' | 'Pendente' | 'Rejeitado';
