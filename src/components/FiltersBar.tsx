@@ -38,14 +38,14 @@ export const FiltersBar: React.FC<FiltersBarProps> = ({
   const scrollContentTypes = (direction: 'left' | 'right') => contentTypesRef.current?.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
 
   const contentTypes: { id: ContentType; label: string }[] = [
-    { id: 'Todas', label: 'Todos os Formatos' },
+    { id: 'Todas', label: 'Todos' },
     { id: 'Cursos Online', label: 'Cursos Online' },
     { id: 'E-books', label: 'E-books' },
-    { id: 'Arquivos', label: 'Minutas & Modelos' },
+    { id: 'Arquivos', label: 'Ficheiros' },
   ];
 
   const priceOptions: { id: 'all' | 'free' | 'paid'; label: string }[] = [
-    { id: 'all', label: 'Todos os Preços' },
+    { id: 'all', label: 'Todos' },
     { id: 'free', label: 'Grátis' },
     { id: 'paid', label: 'Pagos' },
   ];
@@ -75,7 +75,7 @@ export const FiltersBar: React.FC<FiltersBarProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Pesquisar por curso, livro ou formador..."
+            placeholder="Pesquisar..."
             className="w-full bg-[#f4f5f7] rounded-full py-2.5 pl-10 pr-4 text-xs sm:text-sm text-[#0c2340] placeholder-[#8c9ba5] focus:outline-none focus:bg-white transition-all shadow-xs"
           />
           <Search className="w-4 h-4 text-[#8c9ba5] absolute left-3.5 top-3" />
@@ -156,10 +156,7 @@ export const FiltersBar: React.FC<FiltersBarProps> = ({
         <div className="flex items-center gap-2 text-[#5e6d77]">
           <SlidersHorizontal className="w-4 h-4 text-[#8c3a27]" />
           <span className="text-sm">
-            A mostrar <strong>{totalResults}</strong> resultados
-            {selectedCategory !== 'Todas' && (
-              <> na categoria <strong className="text-[#0c2340]">{selectedCategory}</strong></>
-            )}
+            <strong>{totalResults}</strong> resultados
             {showWishlistOnly && <span className="inline-flex items-center gap-1 ml-2 rounded-full bg-[#f8eee8] text-[#8c3a27] px-2.5 py-1 font-semibold"><Heart className="w-3.5 h-3.5" /> Favoritos</span>}
           </span>
         </div>
@@ -169,7 +166,7 @@ export const FiltersBar: React.FC<FiltersBarProps> = ({
             onClick={handleClearFilters}
             className="text-xs font-bold text-[#e05822] hover:underline cursor-pointer"
           >
-            Limpar Todos os Filtros
+            Limpar
           </button>
         )}
       </div>

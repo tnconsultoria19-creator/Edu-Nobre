@@ -9,23 +9,23 @@ interface HeroProps {
 const BANNERS = [
   {
     id: 1,
-    title: (<>Aprenda em qualquer lugar <br /><span className="text-[#d8c29b] inline-block">Formação Online</span></>),
-    subtitle: 'Descubra cursos práticos para desenvolver competências, abrir novas oportunidades e avançar na sua carreira.',
-    ctaText: 'Explorar Cursos',
+    title: (<>Aprenda ao seu ritmo <br /><span className="text-[#d8c29b] inline-block">Online</span></>),
+    subtitle: 'Cursos práticos para o seu próximo passo.',
+    ctaText: 'Explorar',
     image: 'https://img.magnific.com/free-photo/smart-pretty-young-woman-working-with-laptop-table-library-studying-university-learning-freelancer-working-searching-internet-clever-student-hard-working_197531-1856.jpg'
   },
   {
     id: 2,
-    title: (<>Aprendizagem que <br /><span className="text-[#d8c29b] inline-block">acompanha o seu ritmo</span></>),
-    subtitle: 'Aprenda de forma flexível com conteúdos digitais criados para a vida real, o trabalho e o crescimento pessoal.',
-    ctaText: 'Ver Cursos',
+    title: (<>Conhecimento <br /><span className="text-[#d8c29b] inline-block">para crescer</span></>),
+    subtitle: 'Aprendizagem simples e flexível.',
+    ctaText: 'Ver cursos',
     image: 'https://img.magnific.com/free-photo/woman-searching-something-internet-using-her-smartphone-while-being-home_23-2149240356.jpg'
   },
   {
     id: 3,
-    title: (<>Conhecimento para <br /><span className="text-[#d8c29b] inline-block">o próximo passo</span></>),
-    subtitle: 'Explore cursos em áreas profissionais relevantes, encontre formadores e transforme conhecimento em novas possibilidades.',
-    ctaText: 'Explorar Cursos',
+    title: (<>Descubra algo <br /><span className="text-[#d8c29b] inline-block">novo</span></>),
+    subtitle: 'Cursos, livros e recursos úteis.',
+    ctaText: 'Explorar',
     image: 'https://img.magnific.com/free-photo/woman-using-digital-tablet-technology_23-2149491853.jpg'
   },
 ];

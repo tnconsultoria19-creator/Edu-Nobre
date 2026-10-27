@@ -200,9 +200,7 @@ export const DownloadsSection: React.FC = () => {
         
         {/* Elegant Section Header with Visual Divider */}
         <div className="max-w-3xl mx-auto space-y-1.5">
-          <div className="inline-flex items-center gap-1.5 text-[#185a7d] text-[10px] sm:text-xs font-bold uppercase tracking-wider"><Download className="w-3.5 h-3.5" /> Recursos úteis</div>
-          <h2 className="text-xl sm:text-3xl font-extrabold text-[#0c2340] font-outfit tracking-tight">Central de Downloads</h2>
-          <p className="text-xs sm:text-sm text-[#5e6d77] leading-relaxed">Modelos e ficheiros práticos para apoiar o seu trabalho.</p>
+          <h2 className="text-xl sm:text-3xl font-extrabold text-[#0c2340] font-outfit tracking-tight">Downloads</h2>
         </div>
 
         {/* Category Pills */}

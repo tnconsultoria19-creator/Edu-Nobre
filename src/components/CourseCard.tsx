@@ -1,6 +1,6 @@
 import React from 'react';
 import { CatalogItem } from '../types';
-import { ShoppingBag, Star, Zap, Heart, BookOpen } from 'lucide-react';
+import { ShoppingBag, Zap, Heart, BookOpen } from 'lucide-react';
 
 interface CourseCardProps {
   item: CatalogItem;
@@ -70,14 +70,13 @@ export const CourseCard: React.FC<CourseCardProps> = ({
         <div>
           {/* Tags */}
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
-            <span className="text-[9px] sm:text-[11px] font-semibold text-[#655b54] bg-[#f4f0eb] px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md tracking-wide">{item.contentType}</span>
             <span className="text-[9px] sm:text-[11px] font-semibold text-[#8c3a27] bg-[#f8eee8] px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md tracking-wide">{item.category}</span>
           </div>
 
           {/* Title */}
           <h3
             onClick={() => onQuickView && onQuickView(item)}
-            className="text-xs sm:text-base font-bold text-[#26211e] font-outfit line-clamp-2 leading-snug mb-2 group-hover:text-[#be462a] transition-colors cursor-pointer"
+            className="text-sm sm:text-base font-semibold text-[#26211e] font-outfit line-clamp-2 leading-snug mb-2 group-hover:text-[#be462a] transition-colors cursor-pointer"
           >
             {item.title}
           </h3>
@@ -101,36 +100,6 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               Ver detalhes
             </button>
           )}
-          {/* Author & Star Rating Row */}
-          <div className="flex items-center justify-between gap-2 mb-4 pt-1">
-            <div className="flex items-center gap-2 min-w-0">
-              <img
-                src={item.author.avatar}
-                alt={item.author.name}
-                className="w-6 h-6 rounded-full object-cover shrink-0"
-              />
-              <span className="text-[10px] sm:text-[13px] text-[#625a54] font-medium truncate">
-                {item.author.name}
-              </span>
-            </div>
-
-            {/* Stars Rating */}
-            <div className="hidden sm:flex items-center gap-0.5 text-[#b89b66] shrink-0">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  className={`w-3.5 h-3.5 ${
-                    i < Math.floor(item.rating)
-                      ? 'fill-current'
-                      : i < item.rating
-                      ? 'fill-current opacity-70'
-                      : 'text-[#cbd5e1]'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-
           {/* 3. Direct Purchase Action Button */}
           {demoMode ? (
             <button type="button" onClick={() => onQuickView?.(item)} className="w-full bg-[#f4eee8] text-[#7b3524] text-[10px] sm:text-sm font-semibold py-2 sm:py-3 px-2 sm:px-4 rounded-full flex items-center justify-center gap-1.5 cursor-pointer transition-colors">

@@ -25,8 +25,7 @@ export const TeachersSection: React.FC = () => {
   return (
     <section id="formadores" className="py-10 sm:py-16 flex flex-col items-center gap-6 sm:gap-8">
       <div className="text-center max-w-2xl mx-auto px-4 space-y-2">
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#0c2340] font-outfit tracking-tight">Nossos Formadores & Autores</h2>
-        <p className="text-sm sm:text-base text-[#5e6d77] leading-relaxed">Toque num perfil para ver informações básicas sobre a área de actuação do formador.</p>
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-[#0c2340] font-outfit tracking-tight">Formadores</h2>
       </div>
       <div className="w-full max-w-[1280px] mx-auto px-3 sm:px-4">
         <div className="flex items-center gap-2">
