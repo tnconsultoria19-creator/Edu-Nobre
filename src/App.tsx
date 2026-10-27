@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
-import { CategoryShowcase } from './components/CategoryShowcase';
 import { FiltersBar } from './components/FiltersBar';
 import { CourseCard } from './components/CourseCard';
 import { AdBannerSection } from './components/AdBannerSection';
@@ -38,21 +37,25 @@ const writeBrowserState = (key: string, value: unknown) => {
   }
 };
 
+// Temporary frontend-only demo; never use this mode with production data.
+const DEMO_MODE = true;
+const DEMO_USERS: User[] = [
+  { id: 'demo-admin', name: 'Admin Demo', email: 'admin@demo.local', role: 'Administrador', status: 'Ativo' },
+  { id: 'demo-trainer', name: 'Formador Demo', email: 'formador@demo.local', role: 'Formador', status: 'Ativo' },
+  { id: 'demo-student', name: 'Aluno Demo', email: 'aluno@demo.local', role: 'Aluno', status: 'Ativo' },
+];
+
 export function App() {
   // Global State
   const currency = 'AOA';
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => readBrowserState<User | null>('edunombre_demo_user_v1', null));
 
-  // Dynamic Catalog State
-  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
-  const [isDemoCatalog, setIsDemoCatalog] = useState(false);
-
-  // Users List State for Admin Management
-  const [usersList, setUsersList] = useState<User[]>([]);
-
-  // Purchased Items Library State
-  const [purchasedItems, setPurchasedItems] = useState<CatalogItem[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  // Demo content and changes persist in this browser only.
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>(() => readBrowserState<CatalogItem[]>('edunombre_demo_catalog_v1', MOCK_CATALOG_ITEMS));
+  const isDemoCatalog = true;
+  const [usersList, setUsersList] = useState<User[]>(() => readBrowserState<User[]>('edunombre_demo_users_v1', DEMO_USERS));
+  const [purchasedItems, setPurchasedItems] = useState<CatalogItem[]>(() => readBrowserState<CatalogItem[]>('edunombre_demo_library_v1', []));
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => readBrowserState<AuditLogEntry[]>('edunombre_demo_audit_v1', []));
 
   // Filters, Search & Sorting
   const [selectedCategory, setSelectedCategory] = useState<Category>('Todas');
@@ -78,62 +81,23 @@ export function App() {
   const [quickViewItem, setQuickViewItem] = useState<CatalogItem | null>(null);
 
   useEffect(() => {
-    let active = true;
-    if (!getSessionToken()) return () => { active = false; };
-    apiMe().then(({ user: restoredUser }) => { if (active) setUser(restoredUser); })
-      .catch(() => { if (active) setSessionToken(null); });
-    return () => { active = false; };
+    if (DEMO_MODE) setSessionToken(null);
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    apiListProducts()
-      .then(({ items }) => {
-        if (!active) return;
-        const usePreviewCatalogue = items.length === 0 && user?.role !== 'Administrador';
-        setCatalogItems(usePreviewCatalogue ? MOCK_CATALOG_ITEMS : items);
-        setIsDemoCatalog(usePreviewCatalogue);
-      })
-      .catch((error) => {
-        console.error('Edu-Nobre: não foi possível carregar o catálogo.', error);
-        if (active && user?.role !== 'Administrador') {
-          setCatalogItems(MOCK_CATALOG_ITEMS);
-          setIsDemoCatalog(true);
-        }
-      });
-    return () => { active = false; };
-  }, [user?.id, user?.role]);
+  useEffect(() => writeBrowserState('edunombre_demo_catalog_v1', catalogItems), [catalogItems]);
+  useEffect(() => writeBrowserState('edunombre_demo_users_v1', usersList), [usersList]);
+  useEffect(() => writeBrowserState('edunombre_demo_audit_v1', auditLogs), [auditLogs]);
+  useEffect(() => writeBrowserState('edunombre_demo_library_v1', purchasedItems), [purchasedItems]);
+  useEffect(() => writeBrowserState('edunombre_cart_v1', cartItems), [cartItems]);
+  useEffect(() => writeBrowserState('edunombre_favourites_v1', wishlistIds), [wishlistIds]);
 
   useEffect(() => {
-    let active = true;
-    if (user?.role === 'Administrador') {
-      Promise.all([apiListUsers(), apiListAudit()])
-        .then(([users, logs]) => {
-          if (!active) return;
-          setUsersList(users.users);
-          setAuditLogs(logs);
-        })
-        .catch((error) => console.error('Edu-Nobre: não foi possível carregar a gestão administrativa.', error));
-    } else {
-      setUsersList([]);
-      setAuditLogs([]);
-    }
-    return () => { active = false; };
-  }, [user?.id, user?.role]);
-
-  useEffect(() => {
-    let active = true;
     if (user && userLibraryOpen) {
-      apiListLibrary().then(({ items }) => { if (active) setPurchasedItems(items); })
-        .catch((error) => console.error('Edu-Nobre: não foi possível carregar a biblioteca.', error));
+      setPurchasedItems(readBrowserState<CatalogItem[]>('edunombre_demo_library_v1', []));
     } else if (!user) {
       setPurchasedItems([]);
     }
-    return () => { active = false; };
   }, [user?.id, userLibraryOpen]);
-
-  useEffect(() => writeBrowserState('edunombre_cart_v1', cartItems), [cartItems]);
-  useEffect(() => writeBrowserState('edunombre_favourites_v1', wishlistIds), [wishlistIds]);
 
   // Comprehensive Filter & Sorting Logic (Only Published items show in store)
   const filteredCatalog = useMemo(() => {
@@ -181,8 +145,26 @@ export function App() {
     });
   }, [catalogItems, selectedCategory, selectedContentType, priceFilter, sortBy, searchQuery, showWishlistOnly, wishlistIds]);
 
+  const addDemoAudit = (
+    action: AuditLogEntry['action'],
+    entityType: AuditLogEntry['entityType'],
+    description: string,
+    entityId?: string,
+    actor: User | null = user,
+  ) => {
+    if (!DEMO_MODE) return;
+    const entry: AuditLogEntry = {
+      id: `demo-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      action, entityType, entityId, description,
+      actorName: actor?.name || 'Admin Demo',
+      actorEmail: actor?.email,
+      createdAt: new Date().toISOString(),
+    };
+    setAuditLogs((previous) => [entry, ...previous].slice(0, 200));
+  };
+
   const refreshAdminData = async () => {
-    if (user?.role !== 'Administrador') return;
+    if (DEMO_MODE || user?.role !== 'Administrador') return;
     try {
       const [users, logs] = await Promise.all([apiListUsers(), apiListAudit()]);
       setUsersList(users.users);
@@ -193,9 +175,15 @@ export function App() {
   };
 
   const handleAddItem = async (newItem: CatalogItem) => {
+    if (DEMO_MODE) {
+      const saved: CatalogItem = { ...newItem, approvalStatus: newItem.approvalStatus || 'Publicado' };
+      setCatalogItems((previous) => [saved, ...previous.filter((item) => item.id !== saved.id)]);
+      addDemoAudit('Criado', 'Conteúdo', `Criou “${saved.title}”.`, saved.id);
+      return;
+    }
     try {
       const saved = await apiCreateProduct(newItem);
-      setCatalogItems((prev) => [saved, ...prev.filter((item) => item.id !== saved.id)]);
+      setCatalogItems((previous) => [saved, ...previous.filter((item) => item.id !== saved.id)]);
       await refreshAdminData();
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Não foi possível guardar o conteúdo.');
@@ -204,9 +192,14 @@ export function App() {
   };
 
   const handleUpdateItem = async (updatedItem: CatalogItem) => {
+    if (DEMO_MODE) {
+      setCatalogItems((previous) => previous.map((item) => item.id === updatedItem.id ? updatedItem : item));
+      addDemoAudit('Editado', 'Conteúdo', `Editou “${updatedItem.title}”.`, updatedItem.id);
+      return;
+    }
     try {
       const saved = await apiUpdateProduct(updatedItem);
-      setCatalogItems((prev) => prev.map((item) => item.id === saved.id ? saved : item));
+      setCatalogItems((previous) => previous.map((item) => item.id === saved.id ? saved : item));
       await refreshAdminData();
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Não foi possível actualizar o conteúdo.');
@@ -215,11 +208,19 @@ export function App() {
   };
 
   const handleDeleteItem = async (id: string) => {
+    const target = catalogItems.find((item) => item.id === id);
+    if (DEMO_MODE) {
+      setCatalogItems((previous) => previous.filter((item) => item.id !== id));
+      setCartItems((previous) => previous.filter((item) => item.item.id !== id));
+      setWishlistIds((previous) => previous.filter((itemId) => itemId !== id));
+      addDemoAudit('Eliminado', 'Conteúdo', `Eliminou “${target?.title || id}”.`, id);
+      return;
+    }
     try {
       await apiArchiveProduct(id);
-      setCatalogItems((prev) => prev.filter((item) => item.id !== id));
-      setCartItems((prev) => prev.filter((item) => item.item.id !== id));
-      setWishlistIds((prev) => prev.filter((itemId) => itemId !== id));
+      setCatalogItems((previous) => previous.filter((item) => item.id !== id));
+      setCartItems((previous) => previous.filter((item) => item.item.id !== id));
+      setWishlistIds((previous) => previous.filter((itemId) => itemId !== id));
       await refreshAdminData();
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Não foi possível arquivar o conteúdo.');
@@ -227,6 +228,12 @@ export function App() {
   };
 
   const handleApproveItem = async (id: string) => {
+    if (DEMO_MODE) {
+      const target = catalogItems.find((item) => item.id === id);
+      setCatalogItems((previous) => previous.map((item) => item.id === id ? { ...item, approvalStatus: 'Publicado', rejectionReason: undefined } : item));
+      addDemoAudit('Aprovado', 'Conteúdo', `Publicou “${target?.title || id}”.`, id);
+      return;
+    }
     try {
       await apiReviewProduct(id, 'approve');
       const { items } = await apiListProducts();
@@ -238,6 +245,12 @@ export function App() {
   };
 
   const handleRejectItem = async (id: string, reason: string) => {
+    if (DEMO_MODE) {
+      const target = catalogItems.find((item) => item.id === id);
+      setCatalogItems((previous) => previous.map((item) => item.id === id ? { ...item, approvalStatus: 'Rejeitado', rejectionReason: reason } : item));
+      addDemoAudit('Rejeitado', 'Conteúdo', `Rejeitou “${target?.title || id}”: ${reason}`, id);
+      return;
+    }
     try {
       await apiReviewProduct(id, 'reject', reason);
       const { items } = await apiListProducts();
@@ -250,12 +263,16 @@ export function App() {
 
   const handleUpdateUserRole = async (userId: string, role: User['role']) => {
     const target = usersList.find((entry) => entry.id === userId);
-    if (!target) return;
+    if (!target || target.id === user?.id) return;
     const status = role === 'Formador' && role !== target.role ? 'Pendente' : target.status;
+    if (DEMO_MODE) {
+      setUsersList((previous) => previous.map((entry) => entry.id === userId ? { ...entry, role, status } : entry));
+      addDemoAudit('Papel alterado', 'Utilizador', `Alterou o papel de ${target.name} para ${role}.`, userId);
+      return;
+    }
     try {
       const saved = await apiUpdateUser(userId, { role, status });
-      setUsersList((prev) => prev.map((entry) => entry.id === userId ? saved : entry));
-      if (user?.id === userId) setUser(saved);
+      setUsersList((previous) => previous.map((entry) => entry.id === userId ? saved : entry));
       await refreshAdminData();
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Não foi possível alterar o papel.');
@@ -264,23 +281,47 @@ export function App() {
 
   const handleUpdateUserStatus = async (userId: string, status: NonNullable<User['status']>) => {
     const target = usersList.find((entry) => entry.id === userId);
-    if (!target || (target.role === 'Administrador' && status !== 'Ativo')) return;
+    if (!target || target.id === user?.id) return;
+    if (DEMO_MODE) {
+      setUsersList((previous) => previous.map((entry) => entry.id === userId ? { ...entry, status } : entry));
+      addDemoAudit('Estado alterado', 'Utilizador', `Alterou o estado de ${target.name} para ${status}.`, userId);
+      return;
+    }
     try {
       const saved = await apiUpdateUser(userId, { role: target.role, status });
-      setUsersList((prev) => prev.map((entry) => entry.id === userId ? saved : entry));
-      if (user?.id === userId) setUser(saved);
+      setUsersList((previous) => previous.map((entry) => entry.id === userId ? saved : entry));
       await refreshAdminData();
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Não foi possível alterar o estado do utilizador.');
     }
   };
 
+  const handleUpdateUserDetails = async (userId: string, changes: { name?: string; email?: string }) => {
+    const target = usersList.find((entry) => entry.id === userId);
+    if (!target) return;
+    if (DEMO_MODE) {
+      const updated = { ...target, ...changes };
+      setUsersList((previous) => previous.map((entry) => entry.id === userId ? updated : entry));
+      if (user?.id === userId) {
+        setUser(updated);
+        writeBrowserState('edunombre_demo_user_v1', updated);
+      }
+      addDemoAudit('Editado', 'Utilizador', `Editou os dados de ${target.name}.`, userId);
+      return;
+    }
+  };
+
   const handleRemoveUser = async (userId: string) => {
     const target = usersList.find((entry) => entry.id === userId);
-    if (!target || target.role === 'Administrador' || user?.id === userId) return;
+    if (!target || target.id === user?.id) return;
+    if (DEMO_MODE) {
+      setUsersList((previous) => previous.filter((entry) => entry.id !== userId));
+      addDemoAudit('Eliminado', 'Utilizador', `Eliminou o utilizador ${target.name}.`, userId);
+      return;
+    }
     try {
       await apiRemoveUser(userId);
-      setUsersList((prev) => prev.filter((entry) => entry.id !== userId));
+      setUsersList((previous) => previous.filter((entry) => entry.id !== userId));
       await refreshAdminData();
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Não foi possível bloquear o utilizador.');
@@ -289,16 +330,22 @@ export function App() {
 
   const handleSuccessfulLogin = (signedInUser: User) => {
     setUser(signedInUser);
+    writeBrowserState('edunombre_demo_user_v1', signedInUser);
+    setUsersList((previous) => [signedInUser, ...previous.filter((entry) => entry.id !== signedInUser.id)]);
+    addDemoAudit('Sessão iniciada', 'Sessão', 'Sessão de demonstração iniciada.', undefined, signedInUser);
     setAuthOpen(false);
   };
 
   const handleLogout = async () => {
-    try { await apiLogout(); }
-    catch (error) { console.warn('A sessão local foi terminada, mas a API reportou um erro.', error); }
+    if (!DEMO_MODE) {
+      try { await apiLogout(); }
+      catch (error) { console.warn('A sessão local foi terminada, mas a API reportou um erro.', error); }
+    }
+    if (user) addDemoAudit('Sessão terminada', 'Sessão', 'Sessão de demonstração terminada.', undefined, user);
     setUser(null);
-    setUsersList([]);
-    setAuditLogs([]);
+    writeBrowserState('edunombre_demo_user_v1', null);
     setPurchasedItems([]);
+    setSessionToken(null);
   };
 
   // Cart / Direct Purchase Handlers (Kubeta.ao style)
@@ -444,15 +491,6 @@ export function App() {
         {/* 5. Teachers & Authors Section (Faithful Replica of Uploaded Image) */}
         <TeachersSection />
 
-        <CategoryShowcase
-          catalogItems={catalogItems}
-          selectedCategory={selectedCategory}
-          setSelectedCategory={(category) => {
-            setShowWishlistOnly(false);
-            setSelectedCategory(category);
-          }}
-        />
-
         {/* 6. Advertising Card Section (Sponsored / Partner Showcase) */}
         <AdBannerSection onAdClick={() => handleOpenForm('Parceria')} />
 
@@ -476,6 +514,10 @@ export function App() {
         onRemoveItem={handleRemoveFromCart}
         onOpenFormModal={(need, details) => {
           if (!user) { setAuthOpen(true); return; }
+          if (DEMO_MODE) {
+            alert('As compras e pagamentos estão desactivados no modo de demonstração.');
+            return;
+          }
           apiCreateOrder(cartItems.map(({ item, quantity }) => ({ productId: item.id, quantity })), 'whatsapp')
             .then(() => handleOpenForm(need || 'Comprar', details || ''))
             .catch((error) => alert(error instanceof Error ? error.message : 'Não foi possível registar o pedido de compra.'));
@@ -519,8 +561,10 @@ export function App() {
         usersList={usersList}
         onUpdateUserRole={handleUpdateUserRole}
         onUpdateUserStatus={handleUpdateUserStatus}
+        onUpdateUserDetails={handleUpdateUserDetails}
         onRemoveUser={handleRemoveUser}
         auditLogs={auditLogs}
+        demoMode={DEMO_MODE}
       />
 
       <UserLibraryModal

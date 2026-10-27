@@ -44,8 +44,10 @@ interface AdminPortalModalProps {
   usersList: User[];
   onUpdateUserRole: (userId: string, role: User['role']) => void;
   onUpdateUserStatus: (userId: string, status: NonNullable<User['status']>) => void;
+  onUpdateUserDetails: (userId: string, changes: { name?: string; email?: string }) => void;
   onRemoveUser: (userId: string) => void;
   auditLogs: AuditLogEntry[];
+  demoMode?: boolean;
 }
 
 export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
@@ -62,8 +64,10 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
   usersList,
   onUpdateUserRole,
   onUpdateUserStatus,
+  onUpdateUserDetails,
   onRemoveUser,
   auditLogs,
+  demoMode = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'approvals' | 'catalog' | 'add_edit' | 'creator' | 'users' | 'audit'>(() => currentUser?.role === 'Administrador' ? 'approvals' : 'creator');
   const [searchQuery, setSearchQuery] = useState('');
@@ -123,6 +127,18 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
     const q = auditSearch.trim().toLowerCase();
     return !q || [entry.actorName, entry.actorEmail || '', entry.action, entry.entityType, entry.description].some((value) => value.toLowerCase().includes(q));
   });
+
+  const handleEditUserDetails = (target: User) => {
+    const name = prompt('Nome:', target.name);
+    if (name === null) return;
+    const email = prompt('Utilizador/e-mail:', target.email);
+    if (email === null) return;
+    if (!name.trim() || !email.trim()) {
+      alert('O nome e o utilizador são obrigatórios.');
+      return;
+    }
+    onUpdateUserDetails(target.id, { name: name.trim(), email: email.trim() });
+  };
 
   const handleOpenAddForm = () => {
     setEditingItem(null);
@@ -231,15 +247,14 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg sm:text-xl font-black font-outfit text-white">
-                  Infraestrutura de Gestão & Moderação
+                  Painel de Administração
                 </h2>
                 <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-[#e05822] text-white">
                   {currentUser?.role || 'Administrador'}
                 </span>
               </div>
-              <p className="text-xs text-slate-300">
-                Painel unificado para moderação de conteúdos, edição do catálogo e gestão de criadores.
-              </p>
+              <p className="text-xs text-slate-300">Gerir conteúdos e utilizadores.</p>
+              {demoMode && <p className="mt-1 text-[10px] font-semibold text-amber-300">DEMO LOCAL · alterações neste navegador</p>}
             </div>
           </div>
 
@@ -291,7 +306,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                 }`}
               >
                 <Clock className="w-4 h-4 text-amber-400" />
-                Fila de Moderação ({pendingItems.length})
+                Pendentes ({pendingItems.length})
               </button>
 
               <button
@@ -303,7 +318,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                 }`}
               >
                 <Package className="w-4 h-4 text-sky-400" />
-                Catálogo Geral ({catalogItems.length})
+                Catálogo ({catalogItems.length})
               </button>
 
               <button
@@ -315,10 +330,10 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                 }`}
               >
                 <Users className="w-4 h-4 text-emerald-400" />
-                Utilizadores & Permissões
+                Utilizadores
               </button>
               <button onClick={() => setActiveTab('audit')} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'audit' ? 'bg-[#0c2340] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}>
-                <History className="w-4 h-4" /> Auditoria ({auditLogs.length})
+                <History className="w-4 h-4" /> Registo ({auditLogs.length})
               </button>
             </>
           )}
@@ -332,7 +347,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
             }`}
           >
             <UploadCloud className="w-4 h-4 text-indigo-400" />
-            Portal do Criador / Submeter
+            Submissões
           </button>
 
           <button
@@ -340,7 +355,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
             className="ml-auto bg-[#e05822] hover:bg-[#c84a1b] text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer whitespace-nowrap"
           >
             <Plus className="w-4 h-4" />
-            Adicionar Novo Conteúdo
+            Adicionar
           </button>
         </div>
 
@@ -788,7 +803,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                           <td className="p-3 font-semibold text-[#26211e]">{u.name}</td>
                           <td className="p-3 text-slate-500">{u.email}</td>
                           <td className="p-3">
-                            <select value={u.role} onChange={(e) => onUpdateUserRole(u.id, e.target.value as User['role'])} disabled={u.role === 'Administrador'} className="bg-slate-100 text-sm font-semibold text-[#0c2340] p-2 rounded-lg focus:outline-none disabled:opacity-60">
+                            <select value={u.role} onChange={(e) => onUpdateUserRole(u.id, e.target.value as User['role'])} disabled={u.id === currentUser?.id} className="bg-slate-100 text-sm font-semibold text-[#0c2340] p-2 rounded-lg focus:outline-none disabled:opacity-60">
                               <option value="Aluno">Aluno</option><option value="Formador">Formador / Criador</option><option value="Afiliado">Afiliado</option><option value="Administrador">Administrador</option>
                             </select>
                           </td>
@@ -797,9 +812,10 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                           </td>
                           <td className="p-3 text-right">
                             <div className="inline-flex flex-wrap justify-end gap-1.5">
+                              <button onClick={() => handleEditUserDetails(u)} title="Editar nome e e-mail" className="inline-flex items-center gap-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 text-xs font-semibold cursor-pointer"><Edit3 className="w-3.5 h-3.5" /> Editar</button>
                               {u.role === 'Formador' && u.status === 'Pendente' && <button onClick={() => onUpdateUserStatus(u.id, 'Ativo')} className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 text-white px-2.5 py-1.5 text-xs font-semibold cursor-pointer"><UserPlus className="w-3.5 h-3.5" /> Aprovar</button>}
-                              {u.role !== 'Administrador' && <button onClick={() => onUpdateUserStatus(u.id, (u.status || 'Ativo') === 'Bloqueado' ? 'Ativo' : 'Bloqueado')} className="inline-flex items-center gap-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 text-xs font-semibold cursor-pointer">{(u.status || 'Ativo') === 'Bloqueado' ? <CheckCircle className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}{(u.status || 'Ativo') === 'Bloqueado' ? 'Activar' : 'Bloquear'}</button>}
-                              {u.role !== 'Administrador' && u.id !== currentUser?.id && <button onClick={() => { if (confirm(`Eliminar a conta de ${u.name}? Esta acção não pode ser anulada.`)) onRemoveUser(u.id); }} className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 cursor-pointer" title="Eliminar utilizador"><Trash2 className="w-4 h-4" /></button>}
+                              {u.id !== currentUser?.id && <button onClick={() => onUpdateUserStatus(u.id, (u.status || 'Ativo') === 'Bloqueado' ? 'Ativo' : 'Bloqueado')} className="inline-flex items-center gap-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 text-xs font-semibold cursor-pointer">{(u.status || 'Ativo') === 'Bloqueado' ? <CheckCircle className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}{(u.status || 'Ativo') === 'Bloqueado' ? 'Activar' : 'Bloquear'}</button>}
+                              {u.id !== currentUser?.id && <button onClick={() => { if (confirm(`Eliminar a conta de ${u.name}? Esta acção não pode ser anulada.`)) onRemoveUser(u.id); }} className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 cursor-pointer" title="Eliminar utilizador"><Trash2 className="w-4 h-4" /></button>}
                             </div>
                           </td>
                         </tr>
