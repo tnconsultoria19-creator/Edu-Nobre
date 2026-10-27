@@ -393,7 +393,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#faf7f4] text-[#1a1a1a]">
+    <div className="min-h-screen flex flex-col bg-white text-[#1a1a1a]">
       {/* 2. Main Navigation Header */}
       <Header
         cartItems={cartItems}
@@ -429,13 +429,8 @@ export function App() {
         onFormadorClick={() => handleOpenForm('Ser Formador')}
       />
 
-      {/* 4. Main Body Wrapper with Background Image (Under Hero until Footer) */}
-      <div 
-        className="flex-1 bg-cover bg-center bg-fixed"
-        style={{
-          backgroundImage: 'linear-gradient(rgba(252, 249, 246, 0.94), rgba(252, 249, 246, 0.96))',
-        }}
-      >
+      {/* Main page content below the hero stays pure white. */}
+      <div className="flex-1 bg-white">
         {/* Top Categories Showcase */}
         {/* Catalog Grid & Filters Section */}
         <section id="catalogo-grid" className="py-6 sm:py-10">
@@ -459,7 +454,7 @@ export function App() {
 
             {/* Catalog Grid */}
             {filteredCatalog.length === 0 ? (
-              <div className="bg-white/95 rounded-2xl p-12 text-center shadow-sm space-y-3">
+              <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm space-y-3">
                 <BookOpen className="w-10 h-10 text-[#858586] mx-auto" />
                 <h3 className="text-lg font-bold text-[#0c2340]">Nenhum item encontrado</h3>
                 <p className="text-xs text-[#858586]">
@@ -473,7 +468,7 @@ export function App() {
                     setPriceFilter('all');
                     setSearchQuery('');
                   }}
-                  className="bg-[#185a7d] text-white text-xs font-bold px-5 py-2.5 rounded-full cursor-pointer hover:bg-[#12415b] transition-colors"
+                  className="border border-[#185a7d] bg-white text-[#185a7d] text-xs font-bold px-5 py-2.5 rounded-full cursor-pointer hover:border-[#0c2340] hover:text-[#0c2340] transition-colors"
                 >
                   Ver Todos os Cursos e Livros
                 </button>

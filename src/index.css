@@ -7,12 +7,12 @@
     --primary-pressed: #8c301a;
     --primary-light: #f7ebe4;
     --primary-accent: #f0a67d; /* Tacao */
-    --accent-cream: #efe1d6; /* Bizarre */
+    --accent-cream: #ffffff; /* Bizarre */
     --text-primary: #1a1a1a; /* Cod Gray */
     --text-secondary: #858586; /* Jumbo */
-    --background-main: #fcf9f6;
+    --background-main: #ffffff;
     --background-card: #ffffff;
-    --border-light: #e6ded6;
+    --border-light: #e5e7eb;
     --semantic-success: #2e8b57;
     --semantic-attention: #d97706;
   }
@@ -20,7 +20,7 @@
   body {
     font-family: 'Plus Jakarta Sans', sans-serif;
     color: #1a1a1a;
-    background-color: #fcf9f6;
+    background-color: #ffffff;
     font-size: 16px;
     line-height: 1.55;
     overflow-x: hidden;
@@ -39,7 +39,7 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #efe1d6;
+  background: #ffffff;
 }
 
 ::-webkit-scrollbar-thumb {
