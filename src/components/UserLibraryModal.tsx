@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { X, PlayCircle, BookOpen, Download, CheckCircle, FileText, Award, UploadCloud, Trash2, FolderOpen, ExternalLink } from 'lucide-react';
 import { CatalogItem, User } from '../types';
 import { deleteLocalAsset, formatFileSize, getLocalAsset, saveLocalAsset } from '../lib/localAssets';
+import { apiDownloadAsset, apiUpdateLessonProgress } from '../lib/api';
 
 interface UserLibraryModalProps {
   isOpen: boolean;
   onClose: () => void;
   purchasedItems: CatalogItem[];
   currentUser?: User | null;
+  demoMode?: boolean;
 }
 
 interface UserUpload {
@@ -33,8 +35,10 @@ const youtubeEmbed = (value?: string): string | null => {
   return match ? 'https://www.youtube-nocookie.com/embed/' + match[1] : null;
 };
 
-export const UserLibraryModal: React.FC<UserLibraryModalProps> = ({ isOpen, onClose, purchasedItems, currentUser }) => {
+export const UserLibraryModal: React.FC<UserLibraryModalProps> = ({ isOpen, onClose, purchasedItems, currentUser, demoMode = false }) => {
   const [selectedItem, setSelectedItem] = useState<CatalogItem | null>(null);
+  const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
+  const [completedLessonIds, setCompletedLessonIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'content' | 'uploads'>('content');
   const [localResourceUrl, setLocalResourceUrl] = useState('');
   const [userUploads, setUserUploads] = useState<UserUpload[]>(() => readUploads(currentUser?.id));
@@ -59,7 +63,9 @@ export const UserLibraryModal: React.FC<UserLibraryModalProps> = ({ isOpen, onCl
     let alive = true;
     let objectUrl = '';
     setLocalResourceUrl('');
-    if (selectedItem?.resourceAssetId) {
+    setActiveLessonId(selectedItem?.lessons?.[0]?.id || null);
+    setCompletedLessonIds([]);
+    if (demoMode && selectedItem?.resourceAssetId) {
       getLocalAsset(selectedItem.resourceAssetId).then((record) => {
         if (alive && record) {
           objectUrl = URL.createObjectURL(record.blob);
@@ -71,12 +77,16 @@ export const UserLibraryModal: React.FC<UserLibraryModalProps> = ({ isOpen, onCl
       alive = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [selectedItem?.id, selectedItem?.resourceAssetId]);
+  }, [selectedItem?.id, selectedItem?.resourceAssetId, demoMode]);
 
   if (!isOpen) return null;
 
   const downloadAsset = async (assetId: string, fallbackName: string) => {
     try {
+      if (!demoMode) {
+        await apiDownloadAsset(assetId, fallbackName);
+        return;
+      }
       const record = await getLocalAsset(assetId);
       if (!record) {
         alert('Este ficheiro já não está disponível neste navegador.');
@@ -95,11 +105,26 @@ export const UserLibraryModal: React.FC<UserLibraryModalProps> = ({ isOpen, onCl
     }
   };
 
+  const markLessonComplete = async (lessonId: string) => {
+    if (!selectedItem) return;
+    if (completedLessonIds.includes(lessonId)) return;
+    if (!demoMode) {
+      try {
+        await apiUpdateLessonProgress(selectedItem.id, lessonId);
+      } catch (error) {
+        alert(error instanceof Error ? error.message : 'Não foi possível guardar o progresso.');
+        return;
+      }
+    }
+    setCompletedLessonIds((previous) => previous.includes(lessonId) ? previous : [...previous, lessonId]);
+  };
+
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.currentTarget.files || []);
     event.currentTarget.value = '';
     for (const file of files) {
       try {
+        if (!demoMode) { alert('Esta área guarda ficheiros pessoais apenas neste navegador. Para materiais de um curso, utilize o portal do formador.'); return; }
         const saved = await saveLocalAsset(file);
         const entry: UserUpload = { id: saved.id, name: saved.name, type: saved.type, size: saved.size, createdAt: saved.createdAt };
         setUserUploads((previous) => [entry, ...previous]);
@@ -129,7 +154,8 @@ export const UserLibraryModal: React.FC<UserLibraryModalProps> = ({ isOpen, onCl
     alert('Este conteúdo ainda não tem um ficheiro associado.');
   };
 
-  const embedUrl = youtubeEmbed(selectedItem?.youtubeUrl);
+  const activeLesson = selectedItem?.lessons?.find((lesson) => lesson.id === activeLessonId) || selectedItem?.lessons?.[0];
+  const embedUrl = youtubeEmbed(activeLesson?.youtubeUrl || selectedItem?.youtubeUrl);
   const assetName = selectedItem?.resourceAssetName || selectedItem?.contentUrl || '';
   const assetLower = assetName.toLowerCase();
   const isPdf = (selectedItem?.resourceAssetType || '').toLowerCase().includes('pdf') || assetLower.split('?')[0].endsWith('.pdf');
@@ -184,7 +210,7 @@ export const UserLibraryModal: React.FC<UserLibraryModalProps> = ({ isOpen, onCl
                   ))}
                 </div>
               )}
-              <p className="text-[10px] leading-relaxed text-slate-500">Modo de demonstração: estes ficheiros ficam neste navegador e não são enviados para a nuvem.</p>
+              <p className="text-[10px] leading-relaxed text-slate-500">{demoMode ? 'Modo de demonstração: estes ficheiros pessoais ficam neste navegador e não são enviados para a nuvem.' : 'Esta área contém ficheiros pessoais guardados neste navegador. Os materiais de cada curso ficam na própria página da aula.'}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-[260px_minmax(0,1fr)] gap-4 min-h-[420px]">
@@ -210,9 +236,31 @@ export const UserLibraryModal: React.FC<UserLibraryModalProps> = ({ isOpen, onCl
                       <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-wide text-[#185a7d]">{selectedItem.contentType}</p><h3 className="text-sm font-bold text-[#0c2340] mt-0.5">{selectedItem.title}</h3></div>
                       {(selectedItem.resourceAssetId || selectedItem.contentUrl) && <button type="button" onClick={() => void downloadSelected()} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-[#185a7d] hover:bg-slate-50"><Download className="w-3.5 h-3.5" /> Descarregar</button>}
                     </div>
-                    <div className="p-3 sm:p-4">
+                    <div className="p-3 sm:p-4 space-y-4">
+                      {selectedItem.lessons && selectedItem.lessons.length > 0 && (
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                          <div className="mb-2 flex items-center justify-between gap-3">
+                            <p className="text-xs font-bold text-[#0c2340]">Conteúdo do curso</p>
+                            <p className="text-[10px] text-slate-500">{completedLessonIds.length} de {selectedItem.lessons.length} aulas concluídas nesta sessão</p>
+                          </div>
+                          <div className="space-y-1.5">
+                            {selectedItem.lessons.map((lesson, index) => (
+                              <button key={lesson.id} type="button" onClick={() => setActiveLessonId(lesson.id)} className={'w-full rounded-lg border px-3 py-2.5 text-left flex items-center gap-2.5 ' + (activeLessonId === lesson.id ? 'border-[#185a7d] bg-white' : 'border-transparent hover:border-slate-200 hover:bg-white')}>
+                                {completedLessonIds.includes(lesson.id) ? <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600" /> : <PlayCircle className="h-4 w-4 shrink-0 text-[#185a7d]" />}
+                                <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-[#0c2340]">{index + 1}. {lesson.title}</span>{lesson.duration && <span className="mt-0.5 block text-[10px] text-slate-500">{lesson.duration}</span>}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       {embedUrl ? (
-                        <div className="aspect-video rounded-xl overflow-hidden bg-slate-900"><iframe src={embedUrl} title={selectedItem.title} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen /></div>
+                        <div className="aspect-video rounded-xl overflow-hidden bg-slate-900"><iframe src={embedUrl} title={(activeLesson?.title || selectedItem.title)} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen /></div>
+                        {activeLesson && (
+                          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                            <p className="text-xs font-semibold text-[#0c2340]">{activeLesson.title}</p>
+                            <button type="button" onClick={() => void markLessonComplete(activeLesson.id)} disabled={completedLessonIds.includes(activeLesson.id)} className="rounded-full border border-[#185a7d] px-4 py-2 text-xs font-semibold text-[#185a7d] disabled:border-emerald-200 disabled:text-emerald-700">{completedLessonIds.includes(activeLesson.id) ? 'Aula concluída' : 'Marcar como concluída'}</button>
+                          </div>
+                        )}
                       ) : localResourceUrl && isPdf ? (
                         <iframe src={localResourceUrl} title={selectedItem.title} className="w-full h-[65vh] rounded-lg border border-slate-200" />
                       ) : selectedItem.contentUrl && isPdf ? (
@@ -225,6 +273,9 @@ export const UserLibraryModal: React.FC<UserLibraryModalProps> = ({ isOpen, onCl
                         <div className="rounded-xl bg-slate-50 border border-slate-200 p-8 text-center"><ExternalLink className="w-8 h-8 mx-auto text-[#185a7d] mb-2" /><p className="text-sm font-semibold text-[#0c2340]">Abrir material</p><a href={selectedItem.contentUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#185a7d] text-white text-xs font-semibold">Abrir ficheiro <ExternalLink className="w-3.5 h-3.5" /></a></div>
                       ) : (
                         <div className="aspect-video rounded-xl bg-slate-900 flex flex-col items-center justify-center text-white p-6 text-center"><PlayCircle className="w-10 h-10 text-slate-400 mb-3" /><p className="text-sm font-semibold">Conteúdo ainda não configurado</p><p className="text-xs text-slate-400 mt-1">O administrador pode adicionar um vídeo do YouTube ou carregar um PDF/slides no portal.</p></div>
+                      )}
+                      {selectedItem.resourceAssetId && !localResourceUrl && (
+                        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 flex items-center justify-between gap-3"><div><p className="text-xs font-semibold text-[#0c2340]">{selectedItem.resourceAssetName || 'Material do curso'}</p><p className="mt-1 text-[10px] text-slate-500">Documento para descarregar</p></div><button type="button" onClick={() => void downloadSelected()} className="inline-flex items-center gap-2 rounded-full bg-[#185a7d] px-4 py-2 text-xs font-semibold text-white"><Download className="h-4 w-4" /> Descarregar</button></div>
                       )}
                     </div>
                   </div>
