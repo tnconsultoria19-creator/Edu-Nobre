@@ -32,9 +32,9 @@ const BANNERS = [
     title: (<>Ideias que ganham vida<span className="text-[#f0a67d]">.</span></>),
     subtitle: 'Vídeos, cursos e materiais num só lugar.',
     ctaText: 'Explorar',
-    image: 'https://images.pexels.com/photos/7242796/pexels-photo-7242796.jpeg?auto=compress&cs=tinysrgb&w=1400',
+    image: 'https://images.pexels.com/photos/6870421/pexels-photo-6870421.jpeg?auto=compress&cs=tinysrgb&w=2400',
     alt: 'Criadora de conteúdo a gravar um vídeo',
-    imagePosition: 'center 4%'
+    imagePosition: 'center 28%'
   },
   {
     id: 4,
