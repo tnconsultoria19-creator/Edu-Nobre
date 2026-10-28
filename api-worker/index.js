@@ -98,8 +98,67 @@ function publicUser(row) {
 }
 function contentType(type) { return type === "ebook" ? "E-books" : type === "arquivo" ? "Arquivos" : type === "evento" ? "Masterclass" : "Cursos Online"; }
 function productType(type) { return type === "E-books" ? "ebook" : type === "Arquivos" ? "arquivo" : type === "Masterclass" || type === "Mentores" ? "evento" : "curso"; }
-function publicProduct(row) {
-  return {
+function parseJsonArray(value) {
+  try {
+    const parsed = JSON.parse(String(value || "[]"));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) { return []; }
+}
+
+function normalizeYoutubeUrl(value) {
+  if (value == null || String(value).trim() === "") return null;
+  let url;
+  try { url = new URL(String(value).trim()); }
+  catch (_) { throw new HttpError(400, "Introduza uma ligação válida do YouTube."); }
+  if (url.protocol !== "https:") throw new HttpError(400, "As ligações de aulas devem usar HTTPS.");
+  const host = url.hostname.toLowerCase().replace(/^www\./, "");
+  if (!["youtube.com", "m.youtube.com", "youtube-nocookie.com", "youtu.be"].includes(host)) {
+    throw new HttpError(400, "As aulas devem usar uma ligação do YouTube.");
+  }
+  let videoId = "";
+  if (host === "youtu.be") videoId = url.pathname.split("/").filter(Boolean)[0] || "";
+  else if (url.pathname === "/watch") videoId = url.searchParams.get("v") || "";
+  else {
+    const match = url.pathname.match(/^\/(?:embed|shorts|live)\/([A-Za-z0-9_-]{11})(?:\/|$)/);
+    videoId = match ? match[1] : "";
+  }
+  if (!/^[A-Za-z0-9_-]{11}$/.test(videoId)) throw new HttpError(400, "Não foi possível reconhecer o ID do vídeo do YouTube.");
+  return "https://www.youtube.com/watch?v=" + videoId;
+}
+
+function normalizeHttpsUrl(value, label) {
+  if (value == null || String(value).trim() === "") return null;
+  let url;
+  try { url = new URL(String(value).trim()); }
+  catch (_) { throw new HttpError(400, "Introduza uma ligação válida para " + label + "."); }
+  if (url.protocol !== "https:") throw new HttpError(400, "A ligação para " + label + " deve usar HTTPS.");
+  return url.toString().slice(0, 2000);
+}
+
+function normalizeLessons(value) {
+  if (value == null) return [];
+  if (!Array.isArray(value) || value.length > 100) throw new HttpError(400, "O curso pode conter até 100 aulas.");
+  return value.map(function (lesson, index) {
+    if (!lesson || typeof lesson !== "object") throw new HttpError(400, "Existe uma aula inválida.");
+    const title = String(lesson.title || "").trim().slice(0, 180);
+    if (!title) throw new HttpError(400, "Todas as aulas precisam de um título.");
+    const youtube = normalizeYoutubeUrl(lesson.youtubeUrl);
+    const resourceUrl = normalizeHttpsUrl(lesson.contentUrl, "material da aula");
+    if (!youtube && !resourceUrl) throw new HttpError(400, "Cada aula precisa de um vídeo do YouTube ou de um material.");
+    const rawId = String(lesson.id || "");
+    return {
+      id: /^[A-Za-z0-9_-]{1,100}$/.test(rawId) ? rawId : "lesson-" + String(index + 1),
+      title: title,
+      youtubeUrl: youtube || undefined,
+      contentUrl: resourceUrl || undefined,
+      duration: String(lesson.duration || "").trim().slice(0, 40) || undefined,
+      preview: Boolean(lesson.preview)
+    };
+  });
+}
+
+function publicProduct(row, includeContent) {
+  const product = {
     id: row.id, title: row.title, subtitle: (row.description || "").slice(0, 120), category: row.category || "Outros",
     contentType: contentType(row.product_type), price: Number(row.price_aoa || 0),
     originalPrice: row.original_price_aoa == null ? undefined : Number(row.original_price_aoa),
@@ -109,6 +168,23 @@ function publicProduct(row) {
     approvalStatus: row.moderation_status === "published" && Number(row.is_published) === 1 ? "Publicado" : row.moderation_status === "rejected" ? "Rejeitado" : "Pendente",
     rejectionReason: row.rejection_reason || undefined, creatorEmail: row.creator_email || undefined, createdAt: row.created_at
   };
+  if (includeContent) {
+    product.youtubeUrl = row.youtube_url || undefined;
+    product.contentUrl = row.content_url || undefined;
+    product.lessons = parseJsonArray(row.lessons_json);
+    product.resourceAssetId = row.resource_asset_id || undefined;
+    product.resourceAssetName = row.resource_asset_name || undefined;
+    product.resourceAssetType = row.resource_asset_type || undefined;
+  }
+  return product;
+}
+
+async function getOwnedAsset(env, user, assetId) {
+  if (!assetId) return null;
+  const asset = await env.DB.prepare("SELECT id, creator_id, file_name, mime_type, product_id FROM course_assets WHERE id = ?").bind(assetId).first();
+  if (!asset) throw new HttpError(400, "O ficheiro seleccionado não existe no armazenamento da plataforma. Carregue-o novamente.");
+  if (user.role !== "admin" && asset.creator_id !== user.id) throw new HttpError(403, "Só pode associar um ficheiro da sua própria conta.");
+  return asset;
 }
 
 async function logAudit(env, actor, action, entityType, entityId, description) {
@@ -172,12 +248,15 @@ async function listProducts(env, user) {
   let result;
   if (user && user.status !== "blocked" && user.role === "admin") {
     result = await env.DB.prepare(PRODUCT_SELECT + " WHERE p.moderation_status != 'archived' ORDER BY p.created_at DESC").all();
-  } else if (user && user.status !== "blocked" && user.role === "creator") {
-    result = await env.DB.prepare(PRODUCT_SELECT + " WHERE ((p.moderation_status = 'published' AND p.is_published = 1) OR (p.creator_id = ? AND p.moderation_status != 'archived')) ORDER BY p.created_at DESC").bind(user.id).all();
-  } else {
-    result = await env.DB.prepare(PRODUCT_SELECT + " WHERE p.moderation_status = 'published' AND p.is_published = 1 ORDER BY p.created_at DESC").all();
+    return (result.results || []).map(function (row) { return publicProduct(row, true); });
   }
-  return (result.results || []).map(publicProduct);
+  if (user && user.status !== "blocked" && user.role === "creator") {
+    result = await env.DB.prepare(PRODUCT_SELECT + " WHERE ((p.moderation_status = 'published' AND p.is_published = 1) OR (p.creator_id = ? AND p.moderation_status != 'archived')) ORDER BY p.created_at DESC").bind(user.id).all();
+    return (result.results || []).map(function (row) { return publicProduct(row, row.creator_id === user.id); });
+  }
+  result = await env.DB.prepare(PRODUCT_SELECT + " WHERE p.moderation_status = 'published' AND p.is_published = 1 ORDER BY p.created_at DESC").all();
+  // Never expose unlisted lesson links or private asset identifiers from the public catalogue.
+  return (result.results || []).map(function (row) { return publicProduct(row, false); });
 }
 
 async function handle(request, env) {
@@ -323,11 +402,17 @@ form.addEventListener('submit',async(e)=>{
     const id = newId("prd");
     const type = productType(String(body.contentType || "Cursos Online"));
     const status = user.role === "admin" && body.approvalStatus === "Publicado" ? "published" : "pending";
-    await env.DB.prepare("INSERT INTO products (id, creator_id, title, description, product_type, category, price_aoa, original_price_aoa, cover_image_url, is_published, moderation_status, rejection_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)")
-      .bind(id, user.id, title, description, type, category, price, originalPrice, typeof body.image === "string" ? body.image.slice(0, 2000) : null, status === "published" ? 1 : 0, status).run();
+    const youtubeUrl = normalizeYoutubeUrl(body.youtubeUrl);
+    const contentUrl = normalizeHttpsUrl(body.contentUrl, "material do curso");
+    const lessons = normalizeLessons(body.lessons);
+    const assetId = typeof body.resourceAssetId === "string" && body.resourceAssetId.trim() ? body.resourceAssetId.trim() : null;
+    const asset = await getOwnedAsset(env, user, assetId);
+    await env.DB.prepare("INSERT INTO products (id, creator_id, title, description, product_type, category, price_aoa, original_price_aoa, cover_image_url, is_published, moderation_status, rejection_reason, youtube_url, content_url, lessons_json, resource_asset_id, resource_asset_name, resource_asset_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)")
+      .bind(id, user.id, title, description, type, category, price, originalPrice, typeof body.image === "string" ? body.image.slice(0, 2000) : null, status === "published" ? 1 : 0, status, youtubeUrl, contentUrl, JSON.stringify(lessons), assetId, asset ? asset.file_name : null, asset ? asset.mime_type : null).run();
+    if (asset) await env.DB.prepare("UPDATE course_assets SET product_id = ? WHERE id = ?").bind(id, asset.id).run();
     const saved = await env.DB.prepare(PRODUCT_SELECT + " WHERE p.id = ?").bind(id).first();
     await logAudit(env, user, "product_created", "product", id, "Conteúdo criado: " + title + " (" + status + ").");
-    return respond({ item: publicProduct(saved) }, 201);
+    return respond({ item: publicProduct(saved, true) }, 201);
   }
 
   if (parts[0] === "api" && parts[1] === "products" && parts.length === 3 && method === "PATCH") {
@@ -350,11 +435,18 @@ form.addEventListener('submit',async(e)=>{
     const nextStatus = user.role === "admin" ? (body.approvalStatus === "Publicado" ? "published" : body.approvalStatus === "Rejeitado" ? "rejected" : existing.moderation_status) : "pending";
     const nextReason = user.role === "admin" && body.rejectionReason !== undefined ? String(body.rejectionReason).slice(0, 1000) : (user.role === "creator" ? null : existing.rejection_reason);
     const image = body.image === undefined ? existing.cover_image_url : (typeof body.image === "string" ? body.image.slice(0, 2000) : null);
-    await env.DB.prepare("UPDATE products SET title = ?, description = ?, product_type = ?, category = ?, price_aoa = ?, original_price_aoa = ?, cover_image_url = ?, moderation_status = ?, is_published = ?, rejection_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-      .bind(title, description, type, category, price, originalPrice, image, nextStatus, nextStatus === "published" ? 1 : 0, nextReason, id).run();
+    const youtubeUrl = body.youtubeUrl === undefined ? (existing.youtube_url || null) : normalizeYoutubeUrl(body.youtubeUrl);
+    const contentUrl = body.contentUrl === undefined ? (existing.content_url || null) : normalizeHttpsUrl(body.contentUrl, "material do curso");
+    const lessons = body.lessons === undefined ? parseJsonArray(existing.lessons_json) : normalizeLessons(body.lessons);
+    const assetId = body.resourceAssetId === undefined ? (existing.resource_asset_id || null) : (typeof body.resourceAssetId === "string" && body.resourceAssetId.trim() ? body.resourceAssetId.trim() : null);
+    const asset = await getOwnedAsset(env, user, assetId);
+    await env.DB.prepare("UPDATE products SET title = ?, description = ?, product_type = ?, category = ?, price_aoa = ?, original_price_aoa = ?, cover_image_url = ?, moderation_status = ?, is_published = ?, rejection_reason = ?, youtube_url = ?, content_url = ?, lessons_json = ?, resource_asset_id = ?, resource_asset_name = ?, resource_asset_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .bind(title, description, type, category, price, originalPrice, image, nextStatus, nextStatus === "published" ? 1 : 0, nextReason, youtubeUrl, contentUrl, JSON.stringify(lessons), assetId, asset ? asset.file_name : (assetId === existing.resource_asset_id ? existing.resource_asset_name : null), asset ? asset.mime_type : (assetId === existing.resource_asset_id ? existing.resource_asset_type : null), id).run();
+    if (existing.resource_asset_id && existing.resource_asset_id !== assetId) await env.DB.prepare("UPDATE course_assets SET product_id = NULL WHERE id = ? AND product_id = ?").bind(existing.resource_asset_id, id).run();
+    if (asset) await env.DB.prepare("UPDATE course_assets SET product_id = ? WHERE id = ?").bind(id, asset.id).run();
     const saved = await env.DB.prepare(PRODUCT_SELECT + " WHERE p.id = ?").bind(id).first();
     await logAudit(env, user, "product_updated", "product", id, "Conteúdo actualizado: " + title + "; estado " + nextStatus + ".");
-    return respond({ item: publicProduct(saved) });
+    return respond({ item: publicProduct(saved, true) });
   }
 
   if (parts[0] === "api" && parts[1] === "products" && parts.length === 3 && method === "DELETE") {
