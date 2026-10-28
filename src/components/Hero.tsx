@@ -20,7 +20,7 @@ const BANNERS = [
     eyebrow: 'APRENDA EM QUALQUER LUGAR',
     title: (<>Conhecimento para crescer<span className="text-[#f0a67d]">.</span></>),
     subtitle: 'Aprendizagem simples, prática e flexível.',
-    ctaText: 'Ver cursos',
+    ctaText: 'Explorar cursos',
     image: 'https://images.pexels.com/photos/8154666/pexels-photo-8154666.jpeg?auto=compress&cs=tinysrgb&w=1400',
     alt: 'Jovem mulher a criar conteúdo com o telemóvel'
   },
@@ -29,8 +29,8 @@ const BANNERS = [
     eyebrow: 'APRENDA COM QUEM FAZ',
     title: (<>Ideias que ganham vida<span className="text-[#f0a67d]">.</span></>),
     subtitle: 'Vídeos, cursos e materiais num só lugar.',
-    ctaText: 'Explorar',
-    image: 'https://images.pexels.com/photos/6870421/pexels-photo-6870421.jpeg?auto=compress&cs=tinysrgb&w=2400',
+    ctaText: 'Explorar cursos',
+    image: 'https://images.pexels.com/photos/7242796/pexels-photo-7242796.jpeg?auto=compress&cs=tinysrgb&w=1400',
     alt: 'Criadora de conteúdo a gravar um vídeo'
   },
   {
@@ -38,7 +38,7 @@ const BANNERS = [
     eyebrow: 'CONTEÚDOS PARA O DIA A DIA',
     title: (<>Aprenda fazendo<span className="text-[#f0a67d]">.</span></>),
     subtitle: 'Descubra novas competências e ponha-as em prática.',
-    ctaText: 'Ver conteúdos',
+    ctaText: 'Explorar cursos',
     image: 'https://images.pexels.com/photos/8770464/pexels-photo-8770464.jpeg?auto=compress&cs=tinysrgb&w=1400',
     alt: 'Criador a gravar um vídeo tutorial'
   },
@@ -63,7 +63,7 @@ export const Hero: React.FC<HeroProps> = ({ onExploreClick, onFormadorClick }) =
     return () => clearInterval(timer);
   }, []);
 
-    const banner = BANNERS[currentSlide];
+  const banner = BANNERS[currentSlide];
 
   return (
     <section
@@ -71,7 +71,7 @@ export const Hero: React.FC<HeroProps> = ({ onExploreClick, onFormadorClick }) =
       aria-label={banner.alt}
     >
       <div aria-hidden="true" className="absolute inset-0 scale-105 bg-cover bg-center bg-no-repeat opacity-40 blur-2xl" style={{ backgroundImage: `url('${banner.image}')` }} />
-      <div aria-hidden="true" className="absolute inset-0 bg-cover bg-center bg-no-repeat sm:bg-contain" style={{ backgroundImage: `url('${banner.image}')` }} />
+      <img src={banner.image} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover sm:object-contain sm:[mask-image:linear-gradient(to_right,transparent_0%,black_35%,black_65%,transparent_100%)]" />
       <div className="absolute inset-0 bg-gradient-to-r from-[#071425]/80 via-[#071425]/45 to-[#071425]/20" />
       <div className="absolute inset-0 bg-gradient-to-t from-[#071425]/20 via-transparent to-[#071425]/5" />
       <div className="relative z-10 mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 sm:py-12 lg:py-14">
