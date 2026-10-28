@@ -42,7 +42,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       {/* 1. Full-Bleed Edge-to-Edge Product Image (0px padding, no grey box, full width) */}
       <div 
         onClick={() => onQuickView && onQuickView(item)}
-        className="relative w-full aspect-[16/9] overflow-hidden cursor-pointer shrink-0 bg-[#f3eee8]"
+        className="relative w-full aspect-[16/9] overflow-hidden cursor-pointer shrink-0 bg-slate-100"
       >
         <img
           src={item.image}
@@ -52,14 +52,14 @@ export const CourseCard: React.FC<CourseCardProps> = ({
         />
 
         {onToggleWishlist && (
-          <button type="button" aria-label={isWishlisted ? 'Remover dos favoritos' : 'Adicionar aos favoritos'} title={isWishlisted ? 'Remover dos favoritos' : 'Adicionar aos favoritos'} onClick={(event) => { event.stopPropagation(); onToggleWishlist(item); }} className="absolute top-3 right-3 z-10 rounded-full bg-white/95 p-2 text-[#574f49] shadow-sm transition-colors hover:text-[#be462a]">
-            <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-current text-[#be462a]' : ''}`} />
+          <button type="button" aria-label={isWishlisted ? 'Remover dos favoritos' : 'Adicionar aos favoritos'} title={isWishlisted ? 'Remover dos favoritos' : 'Adicionar aos favoritos'} onClick={(event) => { event.stopPropagation(); onToggleWishlist(item); }} className="absolute top-3 right-3 z-10 rounded-full bg-white/95 p-2 text-[#574f49] shadow-sm transition-colors hover:text-[#185a7d]">
+            <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-current text-[#185a7d]' : ''}`} />
           </button>
         )}
 
         {/* Top-Left Badge (e.g. Hot) */}
         {item.badge && (
-          <span className="absolute top-3 left-3 bg-[#e05822] text-white text-xs font-bold px-2.5 py-0.5 rounded-md shadow-xs z-10">
+          <span className="absolute top-3 left-3 bg-[#185a7d] text-white text-xs font-bold px-2.5 py-0.5 rounded-md shadow-xs z-10">
             {item.badge}
           </span>
         )}
@@ -70,20 +70,20 @@ export const CourseCard: React.FC<CourseCardProps> = ({
         <div>
           {/* Tags */}
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
-            <span className="text-[9px] sm:text-[11px] font-semibold text-[#8c3a27] bg-[#f8eee8] px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md tracking-wide">{item.category}</span>
+            <span className="text-[9px] sm:text-[11px] font-semibold text-[#475569] bg-[#f1f5f9] px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md tracking-wide">{item.category}</span>
           </div>
 
           {/* Title */}
           <h3
             onClick={() => onQuickView && onQuickView(item)}
-            className="text-sm sm:text-base font-semibold text-[#26211e] font-outfit line-clamp-2 leading-snug mb-2 group-hover:text-[#be462a] transition-colors cursor-pointer"
+            className="text-sm sm:text-base font-semibold text-[#26211e] font-outfit line-clamp-2 leading-snug mb-2 group-hover:text-[#185a7d] transition-colors cursor-pointer"
           >
             {item.title}
           </h3>
 
           {/* Price */}
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-sm sm:text-base font-bold text-[#8c3a27]">
+            <span className="text-sm sm:text-base font-bold text-[#0c2340]">
               {displayPrice}
             </span>
             {item.price > 0 && (
@@ -96,18 +96,18 @@ export const CourseCard: React.FC<CourseCardProps> = ({
 
         <div>
           {onQuickView && (
-            <button type="button" onClick={() => onQuickView(item)} className="w-full mb-2 py-1.5 sm:py-2 text-[11px] sm:text-sm font-semibold text-[#625a54] hover:text-[#8c3a27] border border-[#e6ded6] rounded-full transition-colors cursor-pointer">
+            <button type="button" onClick={() => onQuickView(item)} className="w-full mb-2 py-1.5 sm:py-2 text-[11px] sm:text-sm font-semibold text-[#475569] hover:text-[#185a7d] border border-slate-200 rounded-full transition-colors cursor-pointer">
               Ver detalhes
             </button>
           )}
           {/* 3. Direct Purchase Action Button */}
           {demoMode ? (
-            <button type="button" onClick={() => onQuickView?.(item)} className="w-full border border-[#be462a] bg-white text-[#be462a] text-[10px] sm:text-sm font-semibold py-2 sm:py-3 px-2 sm:px-4 rounded-full flex items-center justify-center gap-1.5 cursor-pointer transition-colors hover:border-[#8c301a] hover:text-[#8c301a]">
+            <button type="button" onClick={() => onQuickView?.(item)} className="w-full border border-[#185a7d] bg-white text-[#185a7d] text-[10px] sm:text-sm font-semibold py-2 sm:py-3 px-2 sm:px-4 rounded-full flex items-center justify-center gap-1.5 cursor-pointer transition-colors hover:border-[#0c2340] hover:text-[#0c2340]">
               <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Ver pré-visualização</span>
             </button>
           ) : (
-            <button onClick={() => onAddToCart(item)} className="w-full border border-[#be462a] bg-white text-[#be462a] hover:border-[#8c301a] hover:text-[#8c301a] text-[11px] sm:text-sm font-semibold py-2 sm:py-2.5 px-2 sm:px-3 rounded-full flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer transition-colors">
-              {item.price === 0 ? <><Zap className="w-4 h-4 text-[#e05822] group-hover:text-white" /><span>Aceder Grátis</span></> : <><ShoppingBag className="w-4 h-4" /><span>Comprar Agora</span></>}
+            <button onClick={() => onAddToCart(item)} className="w-full border border-[#185a7d] bg-white text-[#185a7d] hover:border-[#0c2340] hover:text-[#0c2340] text-[11px] sm:text-sm font-semibold py-2 sm:py-2.5 px-2 sm:px-3 rounded-full flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer transition-colors">
+              {item.price === 0 ? <><Zap className="w-4 h-4 text-[#185a7d] group-hover:text-[#0c2340]" /><span>Aceder Grátis</span></> : <><ShoppingBag className="w-4 h-4" /><span>Comprar Agora</span></>}
             </button>
           )}
         </div>
