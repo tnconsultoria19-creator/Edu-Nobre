@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { CatalogItem, Category, ContentType, User, AuditLogEntry } from '../types';
 import { saveLocalAsset } from '../lib/localAssets';
+import { apiUploadAsset } from '../lib/api';
 
 interface AdminPortalModalProps {
   isOpen: boolean;
@@ -97,6 +98,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
   const [formFormat, setFormFormat] = useState<any>('Vídeo');
   const [formYoutubeUrl, setFormYoutubeUrl] = useState('');
   const [formContentUrl, setFormContentUrl] = useState('');
+  const [formLessonsText, setFormLessonsText] = useState('');
   const [formAssetId, setFormAssetId] = useState('');
   const [formAssetName, setFormAssetName] = useState('');
   const [formAssetType, setFormAssetType] = useState('');
@@ -160,6 +162,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
     setFormDescription('Descrição detalhada do conteúdo e objetivos de aprendizagem.');
     setFormYoutubeUrl('');
     setFormContentUrl('');
+    setFormLessonsText('');
     setFormAssetId('');
     setFormAssetName('');
     setFormAssetType('');
@@ -182,6 +185,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
     setFormFormat(item.format || 'Vídeo');
     setFormYoutubeUrl(item.youtubeUrl || '');
     setFormContentUrl(item.contentUrl || '');
+    setFormLessonsText((item.lessons || []).map((lesson) => [lesson.title, lesson.youtubeUrl || '', lesson.duration || ''].join(' | ')).join('\n'));
     setFormAssetId(item.resourceAssetId || '');
     setFormAssetName(item.resourceAssetName || '');
     setFormAssetType(item.resourceAssetType || '');
@@ -207,6 +211,26 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
       return;
     }
 
+    const parsedLessons: NonNullable<CatalogItem['lessons']> = [];
+    const lessonLines = formLessonsText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    for (let index = 0; index < lessonLines.length; index += 1) {
+      const parts = lessonLines[index].split('|').map((part) => part.trim());
+      if (!parts[0] || !parts[1]) {
+        alert('Cada aula deve conter: Título | URL do YouTube | Duração (opcional).');
+        return;
+      }
+      if (!/(youtube\.com|youtu\.be)/i.test(parts[1])) {
+        alert('A aula "' + parts[0] + '" precisa de uma ligação do YouTube válida.');
+        return;
+      }
+      parsedLessons.push({
+        id: editingItem?.lessons?.[index]?.id || 'lesson-' + String(index + 1),
+        title: parts[0],
+        youtubeUrl: parts[1],
+        duration: parts[2] || undefined,
+      });
+    }
+
     const newItemData: CatalogItem = {
       id: editingItem ? editingItem.id : `custom-${Date.now()}`,
       title: formTitle,
@@ -227,6 +251,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
       description: formDescription,
       youtubeUrl: formYoutubeUrl.trim() || undefined,
       contentUrl: formContentUrl.trim() || undefined,
+      lessons: parsedLessons,
       resourceAssetId: formAssetId || undefined,
       resourceAssetName: formAssetName || undefined,
       resourceAssetType: formAssetType || undefined,
@@ -708,11 +733,17 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
 
                   <div className="space-y-3 sm:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700">Vídeo do YouTube (opcional)</label>
+                      <label className="text-xs font-bold text-slate-700">Vídeo principal do YouTube (opcional)</label>
                       <input type="url" value={formYoutubeUrl} onChange={(e) => setFormYoutubeUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-[#0c2340] focus:outline-none focus:border-[#185a7d]" />
+                      <p className="text-[10px] leading-relaxed text-slate-500">Use "Não listado" (Unlisted), não "Privado": um vídeo privado só pode ser visto por contas Google convidadas individualmente e não funciona como aula aberta a todos os alunos.</p>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700">URL pública de PDF ou slides (opcional)</label>
+                      <label className="text-xs font-bold text-slate-700">Aulas do curso (uma por linha)</label>
+                      <textarea rows={4} value={formLessonsText} onChange={(e) => setFormLessonsText(e.target.value)} placeholder={"Introdução | https://youtu.be/ID_DO_VIDEO | 08:25\nMódulo 1 | https://youtube.com/watch?v=ID_DO_VIDEO | 12:40"} className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-[#0c2340] focus:outline-none focus:border-[#185a7d]" />
+                      <p className="text-[10px] leading-relaxed text-slate-500">Formato: Título da aula | URL do YouTube | Duração opcional. As aulas só serão devolvidas ao aluno depois da inscrição.</p>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">Ligação HTTPS de material externo (opcional)</label>
                       <input type="url" value={formContentUrl} onChange={(e) => setFormContentUrl(e.target.value)} placeholder="https://..." className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-[#0c2340] focus:outline-none focus:border-[#185a7d]" />
                     </div>
                     <div className="space-y-1">
@@ -721,17 +752,17 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                         const file = e.currentTarget.files?.[0];
                         if (!file) return;
                         try {
-                          const saved = await saveLocalAsset(file);
+                          const saved = demoMode ? await saveLocalAsset(file) : await apiUploadAsset(file);
                           setFormAssetId(saved.id);
                           setFormAssetName(saved.name);
                           setFormAssetType(saved.type);
-                          setAssetUploadMessage('Ficheiro associado: ' + saved.name + ' (' + Math.max(1, Math.round(saved.size / 1024)) + ' KB)');
+                          setAssetUploadMessage((demoMode ? 'Ficheiro de demonstração no navegador: ' : 'Ficheiro guardado no armazenamento da plataforma: ') + saved.name + ' (' + Math.max(1, Math.round(saved.size / 1024)) + ' KB)');
                         } catch (error) {
                           alert(error instanceof Error ? error.message : 'Não foi possível guardar o ficheiro.');
                         }
                       }} className="w-full text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-[#e8eef2] file:px-3 file:py-2 file:text-xs file:font-semibold file:text-[#0c2340]" />
                       {assetUploadMessage && <p className="text-[11px] text-emerald-700">{assetUploadMessage}</p>}
-                      <p className="text-[10px] leading-relaxed text-slate-500">Os ficheiros carregados ficam neste navegador durante o modo de demonstração. Vídeos devem usar uma ligação do YouTube.</p>
+                      <p className="text-[10px] leading-relaxed text-slate-500">{demoMode ? "No modo de demonstração, o ficheiro fica apenas neste navegador." : "Os ficheiros ficam privados no R2 quando o armazenamento estiver configurado; vídeos são adicionados por ligação do YouTube."}</p>
                     </div>
                   </div>
                   <div className="space-y-1 sm:col-span-2">
