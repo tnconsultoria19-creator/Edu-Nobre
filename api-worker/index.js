@@ -532,11 +532,112 @@ form.addEventListener('submit',async(e)=>{
     }) });
   }
 
+  if (path === "/api/uploads" && method === "POST") {
+    const user = requireUser(currentUser);
+    if (user.status !== "active" || (user.role !== "admin" && user.role !== "creator")) throw new HttpError(403, "Só um formador aprovado pode carregar materiais.");
+    if (!env.COURSE_ASSETS || typeof env.COURSE_ASSETS.put !== "function") throw new HttpError(503, "O armazenamento privado de ficheiros ainda não está ligado. Configure o bucket R2 COURSE_ASSETS.");
+    const declaredSize = Number(request.headers.get("content-length") || "0");
+    if (declaredSize > 25 * 1024 * 1024) throw new HttpError(413, "O ficheiro excede o limite de 25 MB.");
+    let form;
+    try { form = await request.formData(); } catch (_) { throw new HttpError(400, "Não foi possível ler o ficheiro enviado."); }
+    const file = form.get("file");
+    if (!file || typeof file.stream !== "function" || typeof file.size !== "number") throw new HttpError(400, "Seleccione um ficheiro.");
+    if (file.size < 1 || file.size > 25 * 1024 * 1024) throw new HttpError(413, "O ficheiro deve ter entre 1 byte e 25 MB.");
+    const originalName = String(file.name || "material").replace(/[\\/\\r\\n\\0]/g, "_").slice(0, 180);
+    const ext = (originalName.split(".").pop() || "").toLowerCase();
+    const allowedTypes = {
+      pdf: "application/pdf", ppt: "application/vnd.ms-powerpoint",
+      pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      xls: "application/vnd.ms-excel", xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      zip: "application/zip", txt: "text/plain", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg"
+    };
+    if (!Object.prototype.hasOwnProperty.call(allowedTypes, ext)) throw new HttpError(415, "Formato não permitido. Utilize PDF, Office, ZIP, TXT, PNG ou JPEG. Os vídeos devem ser adicionados por ligação.");
+    const mimeType = allowedTypes[ext];
+    const assetId = newId("asset");
+    const objectKey = "private/" + user.id + "/" + assetId + "/" + originalName;
+    await env.COURSE_ASSETS.put(objectKey, file.stream(), {
+      httpMetadata: { contentType: mimeType, cacheControl: "private, no-store" },
+      customMetadata: { assetId: assetId, ownerId: user.id }
+    });
+    const insertedAt = new Date().toISOString();
+    try {
+      await env.DB.prepare("INSERT INTO course_assets (id, creator_id, object_key, file_name, mime_type, size_bytes) VALUES (?, ?, ?, ?, ?, ?)")
+        .bind(assetId, user.id, objectKey, originalName, mimeType, file.size).run();
+    } catch (error) {
+      await env.COURSE_ASSETS.delete(objectKey);
+      throw error;
+    }
+    await logAudit(env, user, "course_asset_uploaded", "asset", assetId, "Material carregado: " + originalName + " (" + file.size + " bytes).");
+    return respond({ asset: { id: assetId, name: originalName, type: mimeType, size: file.size, createdAt: insertedAt } }, 201);
+  }
+
+  if (parts[0] === "api" && parts[1] === "assets" && parts.length === 3 && method === "GET") {
+    const user = requireUser(currentUser);
+    if (!env.COURSE_ASSETS || typeof env.COURSE_ASSETS.get !== "function") throw new HttpError(503, "O armazenamento privado de ficheiros ainda não está ligado. Configure o bucket R2 COURSE_ASSETS.");
+    const asset = await env.DB.prepare("SELECT a.*, p.moderation_status, p.is_published FROM course_assets a LEFT JOIN products p ON p.id = a.product_id WHERE a.id = ?").bind(parts[2]).first();
+    if (!asset) throw new HttpError(404, "Ficheiro não encontrado.");
+    let hasEnrollment = false;
+    if (asset.product_id && user.status === "active") {
+      const enrollment = await env.DB.prepare("SELECT id FROM enrollments WHERE user_id = ? AND product_id = ? AND status IN ('active', 'completed') LIMIT 1").bind(user.id, asset.product_id).first();
+      hasEnrollment = Boolean(enrollment);
+    }
+    const isOwner = user.role === "admin" || asset.creator_id === user.id;
+    if (!isOwner && !hasEnrollment) throw new HttpError(403, "Este material só está disponível para alunos inscritos no curso.");
+    const object = await env.COURSE_ASSETS.get(asset.object_key);
+    if (!object) throw new HttpError(404, "O ficheiro já não está disponível.");
+    const headers = new Headers(corsHeaders);
+    headers.set("Content-Type", asset.mime_type || "application/octet-stream");
+    headers.set("Content-Disposition", "attachment; filename*=UTF-8''" + encodeURIComponent(asset.file_name));
+    headers.set("Content-Length", String(object.size || asset.size_bytes));
+    headers.set("Cache-Control", "private, no-store");
+    headers.set("X-Content-Type-Options", "nosniff");
+    return new Response(object.body, { status: 200, headers: headers });
+  }
+
+  if (path === "/api/enrollments" && method === "POST") {
+    const user = requireUser(currentUser);
+    if (user.status !== "active") throw new HttpError(403, "A sua conta ainda não está activa.");
+    const body = await readBody(request);
+    const productId = typeof body.productId === "string" ? body.productId : "";
+    if (!productId) throw new HttpError(400, "Seleccione um curso.");
+    const product = await env.DB.prepare("SELECT id, title, price_aoa FROM products WHERE id = ? AND moderation_status = 'published' AND is_published = 1").bind(productId).first();
+    if (!product) throw new HttpError(404, "Curso não encontrado ou ainda não publicado.");
+    const existing = await env.DB.prepare("SELECT id FROM enrollments WHERE user_id = ? AND product_id = ? AND status IN ('active', 'completed')").bind(user.id, productId).first();
+    if (existing) return respond({ enrolled: true, alreadyEnrolled: true });
+    if (Number(product.price_aoa) !== 0) throw new HttpError(402, "Este curso é pago. Conclua o pagamento para obter acesso.");
+    const transactionId = newId("txn");
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO transactions (id, buyer_id, product_id, amount_paid_aoa, status, payment_method) VALUES (?, ?, ?, 0, 'completed', 'free')")
+        .bind(transactionId, user.id, productId),
+      env.DB.prepare("INSERT OR IGNORE INTO enrollments (id, user_id, product_id, transaction_id, status) VALUES (?, ?, ?, ?, 'active')")
+        .bind(newId("enr"), user.id, productId, transactionId),
+      env.DB.prepare("INSERT INTO audit_logs (id, actor_id, actor_name, actor_email, action, entity_type, entity_id, description) VALUES (?, ?, ?, ?, 'free_enrollment', 'product', ?, ?)")
+        .bind(newId("audit"), user.id, user.full_name, user.email, productId, "Inscrição gratuita no conteúdo: " + product.title + ".")
+    ]);
+    return respond({ enrolled: true, alreadyEnrolled: false }, 201);
+  }
+
+  if (parts[0] === "api" && parts[1] === "library" && parts.length === 4 && parts[3] === "progress" && method === "POST") {
+    const user = requireUser(currentUser);
+    const productId = parts[2];
+    const body = await readBody(request);
+    const lessonId = typeof body.lessonId === "string" ? body.lessonId.trim().slice(0, 100) : "";
+    if (!lessonId) throw new HttpError(400, "Seleccione uma aula.");
+    const enrolled = await env.DB.prepare("SELECT p.lessons_json FROM enrollments e JOIN products p ON p.id = e.product_id WHERE e.user_id = ? AND e.product_id = ? AND e.status IN ('active', 'completed') LIMIT 1").bind(user.id, productId).first();
+    if (!enrolled) throw new HttpError(403, "É necessário estar inscrito no curso para registar o progresso.");
+    const lessons = parseJsonArray(enrolled.lessons_json);
+    if (!lessons.some(function (lesson) { return lesson && lesson.id === lessonId; })) throw new HttpError(404, "Aula não encontrada neste curso.");
+    await env.DB.prepare("INSERT INTO lesson_progress (user_id, product_id, lesson_id) VALUES (?, ?, ?) ON CONFLICT(user_id, product_id, lesson_id) DO UPDATE SET completed_at = CURRENT_TIMESTAMP").bind(user.id, productId, lessonId).run();
+    return respond({ ok: true, lessonId: lessonId });
+  }
+
   if (path === "/api/orders" && method === "POST") {
     const user = requireUser(currentUser);
     if (user.status !== "active") throw new HttpError(403, "A conta precisa de estar activa para efectuar um pedido.");
     const body = await readBody(request);
     if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 50) throw new HttpError(400, "O pedido deve conter entre 1 e 50 produtos.");
+    const paymentMethod = ["multicaixa_express", "reference"].includes(String(body.paymentMethod || "")) ? String(body.paymentMethod) : "multicaixa_express";
     const quantities = new Map();
     for (const row of body.items) {
       const id = typeof row.productId === "string" ? row.productId : "";
@@ -547,12 +648,14 @@ form.addEventListener('submit',async(e)=>{
     const ids = Array.from(quantities.keys());
     if (ids.length > 50 || Array.from(quantities.values()).some(function (qty) { return qty > 20; })) throw new HttpError(400, "Quantidade de produtos inválida.");
     const placeholders = ids.map(function () { return "?"; }).join(",");
-    const productQuery = env.DB.prepare("SELECT id, title, creator_id, price_aoa FROM products WHERE id IN (" + placeholders + ") AND moderation_status = 'published' AND is_published = 1");
-    const productRows = (await productQuery.bind(...ids).all()).results || [];
+    const productRows = (await env.DB.prepare("SELECT id, title, creator_id, price_aoa FROM products WHERE id IN (" + placeholders + ") AND moderation_status = 'published' AND is_published = 1").bind(...ids).all()).results || [];
     if (productRows.length !== ids.length) throw new HttpError(400, "Um ou mais produtos já não estão disponíveis.");
     const productMap = new Map(productRows.map(function (p) { return [p.id, p]; }));
     const orderId = newId("ord");
+    const invoiceNumber = "EDN-" + new Date().getUTCFullYear() + "-" + randomHex(4).toUpperCase();
     const orderItems = [];
+    const freeTransactions = [];
+    const freeEnrollments = [];
     let total = 0;
     ids.forEach(function (id) {
       const product = productMap.get(id);
@@ -564,14 +667,72 @@ form.addEventListener('submit',async(e)=>{
       orderItems.push(env.DB.prepare("INSERT INTO order_items (id, order_id, product_id, creator_id, quantity, unit_price_aoa, line_total_aoa) VALUES (?, ?, ?, ?, ?, ?, ?)")
         .bind(newId("orditem"), orderId, id, product.creator_id, quantity, unit, line));
     });
+    const isFreeOrder = total === 0;
+    if (isFreeOrder) {
+      ids.forEach(function (id) {
+        const product = productMap.get(id);
+        const transactionId = newId("txn");
+        freeTransactions.push(env.DB.prepare("INSERT INTO transactions (id, buyer_id, product_id, amount_paid_aoa, status, payment_method) VALUES (?, ?, ?, 0, 'completed', 'free')")
+          .bind(transactionId, user.id, id));
+        freeEnrollments.push(env.DB.prepare("INSERT OR IGNORE INTO enrollments (id, user_id, product_id, transaction_id, status) VALUES (?, ?, ?, ?, 'active')")
+          .bind(newId("enr"), user.id, id, transactionId));
+      });
+    }
+    const orderStatus = isFreeOrder ? "paid" : "pending_payment";
+    const provider = isFreeOrder ? "free" : "not_configured";
     const channel = body.contactChannel === "whatsapp" ? "whatsapp" : "platform";
     await env.DB.batch([
-      env.DB.prepare("INSERT INTO orders (id, buyer_id, total_amount_aoa, status, contact_channel) VALUES (?, ?, ?, 'requested', ?)").bind(orderId, user.id, total, channel),
+      env.DB.prepare("INSERT INTO orders (id, buyer_id, total_amount_aoa, status, payment_provider, payment_method, invoice_number, contact_channel) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+        .bind(orderId, user.id, total, orderStatus, provider, isFreeOrder ? "free" : paymentMethod, invoiceNumber, channel),
       ...orderItems,
-      env.DB.prepare("INSERT INTO audit_logs (id, actor_id, actor_name, actor_email, action, entity_type, entity_id, description) VALUES (?, ?, ?, ?, 'order_requested', 'order', ?, ?)")
-        .bind(newId("audit"), user.id, user.full_name, user.email, orderId, "Pedido de compra criado; total " + total + " Kz.")
+      ...freeTransactions,
+      ...freeEnrollments,
+      env.DB.prepare("INSERT INTO audit_logs (id, actor_id, actor_name, actor_email, action, entity_type, entity_id, description) VALUES (?, ?, ?, ?, ?, 'order', ?, ?)")
+        .bind(newId("audit"), user.id, user.full_name, user.email, isFreeOrder ? "free_order_completed" : "order_requested", orderId, "Pedido " + invoiceNumber + " registado; total " + total + " Kz; estado " + orderStatus + ".")
     ]);
-    return respond({ orderId: orderId, status: "requested", totalAmountAOA: total, message: "Pedido registado. O pagamento ainda não foi processado." }, 201);
+    return respond({
+      orderId: orderId,
+      invoiceNumber: invoiceNumber,
+      status: orderStatus,
+      totalAmountAOA: total,
+      paymentMethod: isFreeOrder ? "free" : paymentMethod,
+      paymentProvider: provider,
+      paymentReference: null,
+      paymentStatus: isFreeOrder ? "paid" : "awaiting_gateway",
+      message: isFreeOrder
+        ? "Inscrição gratuita confirmada. O curso já está disponível na sua área."
+        : "Pró-forma criada. A referência, pedido MCX Express ou QR ainda não foi emitido: a integração com o gateway do comerciante precisa de ser configurada. Não considere este pedido como pago."
+    }, 201);
+  }
+
+  if (parts[0] === "api" && parts[1] === "admin" && parts[2] === "orders" && parts.length === 5 && parts[4] === "confirm-payment" && method === "POST") {
+    const admin = requireAdmin(currentUser);
+    const orderId = parts[3];
+    const body = await readBody(request);
+    const paymentReference = typeof body.paymentReference === "string" ? body.paymentReference.trim().slice(0, 180) : "";
+    const order = await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
+    if (!order) throw new HttpError(404, "Encomenda não encontrada.");
+    if (order.status === "paid") return respond({ ok: true, status: "paid", invoiceNumber: order.invoice_number || undefined });
+    if (!["requested", "pending_payment"].includes(order.status)) throw new HttpError(409, "Só pode confirmar uma encomenda pendente.");
+    // This route is for an administrator who has verified receipt outside the platform.
+    // It does not generate or verify an MCX transaction by itself.
+    const items = (await env.DB.prepare("SELECT oi.*, p.title FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = ?").bind(orderId).all()).results || [];
+    const statements = [];
+    for (const item of items) {
+      const transactionId = newId("txn");
+      statements.push(env.DB.prepare("INSERT INTO transactions (id, buyer_id, product_id, amount_paid_aoa, status, payment_method) VALUES (?, ?, ?, ?, 'completed', ?)")
+        .bind(transactionId, order.buyer_id, item.product_id, Number(item.line_total_aoa), "manual_verified"));
+      statements.push(env.DB.prepare("INSERT OR IGNORE INTO enrollments (id, user_id, product_id, transaction_id, status) VALUES (?, ?, ?, ?, 'active')")
+        .bind(newId("enr"), order.buyer_id, item.product_id, transactionId));
+    }
+    await env.DB.batch([
+      env.DB.prepare("UPDATE orders SET status = 'paid', payment_provider = 'manual_verified', payment_reference = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+        .bind(paymentReference || null, orderId),
+      ...statements,
+      env.DB.prepare("INSERT INTO audit_logs (id, actor_id, actor_name, actor_email, action, entity_type, entity_id, description) VALUES (?, ?, ?, ?, 'manual_payment_verified', 'order', ?, ?)")
+        .bind(newId("audit"), admin.id, admin.full_name, admin.email, orderId, "Pagamento verificado manualmente por administrador para a encomenda " + (order.invoice_number || orderId) + ".")
+    ]);
+    return respond({ ok: true, status: "paid", invoiceNumber: order.invoice_number || undefined, message: "Pagamento marcado como verificado e inscrições activadas." });
   }
 
   if ((path === "/api/orders" || path === "/api/admin/orders") && method === "GET") {
@@ -587,7 +748,7 @@ form.addEventListener('submit',async(e)=>{
   if (path === "/api/library" && method === "GET") {
     const user = requireUser(currentUser);
     const result = await env.DB.prepare(PRODUCT_SELECT + " JOIN enrollments e ON e.product_id = p.id WHERE e.user_id = ? AND e.status IN ('active', 'completed') ORDER BY e.granted_at DESC").bind(user.id).all();
-    return respond({ items: (result.results || []).map(publicProduct) });
+    return respond({ items: (result.results || []).map(function (row) { return publicProduct(row, true); }) });
   }
 
   throw new HttpError(404, "Rota não encontrada.");
