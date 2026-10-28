@@ -88,7 +88,7 @@ export const FiltersBar: React.FC<FiltersBarProps> = ({
             id="catalog-category-filter"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value as Category)}
-            className="w-full bg-[#f4f5f7] border border-[#e6ded6] text-sm font-semibold text-[#51463e] py-2.5 px-3 rounded-full focus:outline-none focus:ring-1 focus:ring-[#be462a] cursor-pointer"
+            className="w-full bg-[#f4f5f7] border border-[#e6ded6] text-sm font-semibold text-[#51463e] py-2.5 px-3 rounded-full focus:outline-none focus:ring-1 focus:ring-[#185a7d] cursor-pointer"
           >
             {CATEGORIES_LIST.map((category) => <option key={category} value={category}>{category === 'Todas' ? 'Todas as Categorias' : category}</option>)}
           </select>
@@ -154,17 +154,17 @@ export const FiltersBar: React.FC<FiltersBarProps> = ({
       {/* Bottom Summary & Active Filter Tags */}
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
         <div className="flex items-center gap-2 text-[#5e6d77]">
-          <SlidersHorizontal className="w-4 h-4 text-[#8c3a27]" />
+          <SlidersHorizontal className="w-4 h-4 text-[#64748b]" />
           <span className="text-sm">
             <strong>{totalResults}</strong> resultados
-            {showWishlistOnly && <span className="inline-flex items-center gap-1 ml-2 rounded-full bg-[#f8eee8] text-[#8c3a27] px-2.5 py-1 font-semibold"><Heart className="w-3.5 h-3.5" /> Favoritos</span>}
+            {showWishlistOnly && <span className="inline-flex items-center gap-1 ml-2 rounded-full bg-[#f1f5f9] text-[#64748b] px-2.5 py-1 font-semibold"><Heart className="w-3.5 h-3.5" /> Favoritos</span>}
           </span>
         </div>
 
         {hasActiveFilters && (
           <button
             onClick={handleClearFilters}
-            className="text-xs font-bold text-[#e05822] hover:underline cursor-pointer"
+            className="text-xs font-bold text-[#185a7d] hover:underline cursor-pointer"
           >
             Limpar
           </button>
