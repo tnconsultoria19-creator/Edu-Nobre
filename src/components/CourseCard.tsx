@@ -106,7 +106,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Ver pré-visualização</span>
             </button>
           ) : (
-            <button onClick={() => onAddToCart(item)} className="w-full border border-[#be462a] bg-white text-[#be462a] hover:border-[#8c301a] hover:text-[#8c301a] text-[11px] sm:text-sm font-semibold py-2 sm:py-2.5 px-2 sm:px-3 rounded-full flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer transition-colors>
+            <button onClick={() => onAddToCart(item)} className="w-full border border-[#be462a] bg-white text-[#be462a] hover:border-[#8c301a] hover:text-[#8c301a] text-[11px] sm:text-sm font-semibold py-2 sm:py-2.5 px-2 sm:px-3 rounded-full flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer transition-colors">
               {item.price === 0 ? <><Zap className="w-4 h-4 text-[#e05822] group-hover:text-white" /><span>Aceder Grátis</span></> : <><ShoppingBag className="w-4 h-4" /><span>Comprar Agora</span></>}
             </button>
           )}
