@@ -15,9 +15,10 @@ import { AdminPortalModal } from './components/AdminPortalModal';
 import { UserLibraryModal } from './components/UserLibraryModal';
 
 import { CatalogItem, Category, ContentType, CartItem, User, AuditLogEntry } from './types';
+import { InvoiceModal } from './components/InvoiceModal';
 import { MOCK_CATALOG_ITEMS } from './data/mockData';
 import { BookOpen } from 'lucide-react';
-import { apiArchiveProduct, apiCreateOrder, apiCreateProduct, apiListAudit, apiListLibrary, apiListProducts, apiListUsers, apiLogout, apiMe, apiRemoveUser, apiReviewProduct, apiUpdateProduct, apiUpdateUser, getSessionToken, setSessionToken } from './lib/api';
+import { apiArchiveProduct, apiCreateOrder, apiCreateProduct, apiListAudit, apiListLibrary, apiListProducts, apiListUsers, apiLogout, apiMe, apiRemoveUser, apiReviewProduct, apiUpdateProduct, apiUpdateUser, apiEnrollFree, getSessionToken, setSessionToken, OrderCreateResult } from './lib/api';
 
 const readBrowserState = <T,>(key: string, fallback: T): T => {
   if (typeof window === 'undefined') return fallback;
@@ -38,7 +39,7 @@ const writeBrowserState = (key: string, value: unknown) => {
 };
 
 // Temporary frontend-only demo; never use this mode with production data.
-const DEMO_MODE = true;
+const DEMO_MODE = import.meta.env.DEV && import.meta.env.VITE_EDUNOBRE_DEMO_MODE !== 'false';
 const DEMO_USERS: User[] = [
   { id: 'demo-admin', name: 'Admin Demo', email: 'admin@demo.local', role: 'Administrador', status: 'Ativo' },
   { id: 'demo-trainer', name: 'Formador Demo', email: 'formador@demo.local', role: 'Formador', status: 'Ativo' },
@@ -48,14 +49,16 @@ const DEMO_USERS: User[] = [
 export function App() {
   // Global State
   const currency = 'AOA';
-  const [user, setUser] = useState<User | null>(() => readBrowserState<User | null>('edunombre_demo_user_v1', null));
+  const [user, setUser] = useState<User | null>(() => DEMO_MODE ? readBrowserState<User | null>('edunombre_demo_user_v1', null) : null);
 
   // Demo content and changes persist in this browser only.
-  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>(() => readBrowserState<CatalogItem[]>('edunombre_demo_catalog_v1', MOCK_CATALOG_ITEMS));
-  const isDemoCatalog = true;
-  const [usersList, setUsersList] = useState<User[]>(() => readBrowserState<User[]>('edunombre_demo_users_v1', DEMO_USERS));
-  const [purchasedItems, setPurchasedItems] = useState<CatalogItem[]>(() => readBrowserState<CatalogItem[]>('edunombre_demo_library_v1', []));
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => readBrowserState<AuditLogEntry[]>('edunombre_demo_audit_v1', []));
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>(() => DEMO_MODE ? readBrowserState<CatalogItem[]>('edunombre_demo_catalog_v1', MOCK_CATALOG_ITEMS) : []);
+  const isDemoCatalog = DEMO_MODE;
+  const [usersList, setUsersList] = useState<User[]>(() => DEMO_MODE ? readBrowserState<User[]>('edunombre_demo_users_v1', DEMO_USERS) : []);
+  const [purchasedItems, setPurchasedItems] = useState<CatalogItem[]>(() => DEMO_MODE ? readBrowserState<CatalogItem[]>('edunombre_demo_library_v1', []) : []);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => DEMO_MODE ? readBrowserState<AuditLogEntry[]>('edunombre_demo_audit_v1', []) : []);
+  const [catalogLoading, setCatalogLoading] = useState(!DEMO_MODE);
+  const [catalogLoadError, setCatalogLoadError] = useState('');
 
   // Filters, Search & Sorting
   const [selectedCategory, setSelectedCategory] = useState<Category>('Todas');
@@ -79,24 +82,61 @@ export function App() {
   const [formModalNeed, setFormModalNeed] = useState<string>('Comprar');
   const [formModalDetails, setFormModalDetails] = useState('');
   const [quickViewItem, setQuickViewItem] = useState<CatalogItem | null>(null);
+  const [invoiceOrder, setInvoiceOrder] = useState<{ order: OrderCreateResult; items: CartItem[] } | null>(null);
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
 
   useEffect(() => {
-    if (DEMO_MODE) setSessionToken(null);
+    if (DEMO_MODE) return;
+    let alive = true;
+    setCatalogLoading(true);
+    Promise.all([
+      apiListProducts(),
+      getSessionToken() ? apiMe().catch(() => {
+        setSessionToken(null);
+        return { user: null as unknown as User };
+      }) : Promise.resolve({ user: null as unknown as User }),
+    ]).then(([catalog, auth]) => {
+      if (!alive) return;
+      setCatalogItems(catalog.items);
+      setUser(auth.user || null);
+      setCatalogLoadError('');
+    }).catch((error) => {
+      if (!alive) return;
+      setCatalogItems([]);
+      setCatalogLoadError(error instanceof Error ? error.message : 'Não foi possível carregar o catálogo.');
+    }).finally(() => {
+      if (alive) setCatalogLoading(false);
+    });
+    return () => { alive = false; };
   }, []);
 
-  useEffect(() => writeBrowserState('edunombre_demo_catalog_v1', catalogItems), [catalogItems]);
-  useEffect(() => writeBrowserState('edunombre_demo_users_v1', usersList), [usersList]);
-  useEffect(() => writeBrowserState('edunombre_demo_audit_v1', auditLogs), [auditLogs]);
-  useEffect(() => writeBrowserState('edunombre_demo_library_v1', purchasedItems), [purchasedItems]);
+  useEffect(() => {
+    if (!DEMO_MODE) return;
+    writeBrowserState('edunombre_demo_catalog_v1', catalogItems);
+    writeBrowserState('edunombre_demo_users_v1', usersList);
+    writeBrowserState('edunombre_demo_audit_v1', auditLogs);
+    writeBrowserState('edunombre_demo_library_v1', purchasedItems);
+  }, [catalogItems, usersList, auditLogs, purchasedItems]);
+
   useEffect(() => writeBrowserState('edunombre_cart_v1', cartItems), [cartItems]);
   useEffect(() => writeBrowserState('edunombre_favourites_v1', wishlistIds), [wishlistIds]);
 
   useEffect(() => {
-    if (user && userLibraryOpen) {
-      setPurchasedItems(readBrowserState<CatalogItem[]>('edunombre_demo_library_v1', []));
-    } else if (!user) {
-      setPurchasedItems([]);
+    if (!user || !userLibraryOpen) {
+      if (!user) setPurchasedItems([]);
+      return;
     }
+    if (DEMO_MODE) {
+      setPurchasedItems(readBrowserState<CatalogItem[]>('edunombre_demo_library_v1', []));
+      return;
+    }
+    let alive = true;
+    apiListLibrary().then((result) => {
+      if (alive) setPurchasedItems(result.items);
+    }).catch((error) => {
+      if (alive) alert(error instanceof Error ? error.message : 'Não foi possível carregar a sua área de aprendizagem.');
+    });
+    return () => { alive = false; };
   }, [user?.id, userLibraryOpen]);
 
   // Comprehensive Filter & Sorting Logic (Only Published items show in store)
@@ -334,18 +374,45 @@ export function App() {
       setAuthOpen(true);
       return;
     }
-    const nextLibrary = [item, ...purchasedItems.filter((entry) => entry.id !== item.id)];
-    writeBrowserState('edunombre_demo_library_v1', nextLibrary);
-    setPurchasedItems(nextLibrary);
+    if (DEMO_MODE) {
+      const nextLibrary = [item, ...purchasedItems.filter((entry) => entry.id !== item.id)];
+      writeBrowserState('edunombre_demo_library_v1', nextLibrary);
+      setPurchasedItems(nextLibrary);
+      setQuickViewItem(null);
+      setUserLibraryOpen(true);
+      return;
+    }
+    const enrolled = purchasedItems.some((entry) => entry.id === item.id);
+    if (enrolled) {
+      setQuickViewItem(null);
+      setUserLibraryOpen(true);
+      return;
+    }
+    if (item.price === 0) {
+      apiEnrollFree(item.id).then(() => apiListLibrary()).then((result) => {
+        setPurchasedItems(result.items);
+        setQuickViewItem(null);
+        setUserLibraryOpen(true);
+      }).catch((error) => alert(error instanceof Error ? error.message : 'Não foi possível inscrever-se neste conteúdo.'));
+      return;
+    }
     setQuickViewItem(null);
-    setUserLibraryOpen(true);
+    handleAddToCart(item);
+    alert('Este curso é pago. Depois de gerar a pró-forma, o acesso será activado apenas após confirmação do pagamento.');
   };
 
   const handleSuccessfulLogin = (signedInUser: User) => {
     setUser(signedInUser);
-    writeBrowserState('edunombre_demo_user_v1', signedInUser);
-    setUsersList((previous) => [signedInUser, ...previous.filter((entry) => entry.id !== signedInUser.id)]);
-    addDemoAudit('Sessão iniciada', 'Sessão', 'Sessão de demonstração iniciada.', undefined, signedInUser);
+    if (DEMO_MODE) {
+      writeBrowserState('edunombre_demo_user_v1', signedInUser);
+      setUsersList((previous) => [signedInUser, ...previous.filter((entry) => entry.id !== signedInUser.id)]);
+      addDemoAudit('Sessão iniciada', 'Sessão', 'Sessão de demonstração iniciada.', undefined, signedInUser);
+    } else {
+      apiListProducts().then((result) => setCatalogItems(result.items)).catch((error) => {
+        setCatalogLoadError(error instanceof Error ? error.message : 'Não foi possível actualizar o catálogo.');
+      });
+      if (signedInUser.role === 'Administrador') void refreshAdminData();
+    }
     setAuthOpen(false);
   };
 
@@ -353,10 +420,11 @@ export function App() {
     if (!DEMO_MODE) {
       try { await apiLogout(); }
       catch (error) { console.warn('A sessão local foi terminada, mas a API reportou um erro.', error); }
+    } else {
+      if (user) addDemoAudit('Sessão terminada', 'Sessão', 'Sessão de demonstração terminada.', undefined, user);
+      writeBrowserState('edunombre_demo_user_v1', null);
     }
-    if (user) addDemoAudit('Sessão terminada', 'Sessão', 'Sessão de demonstração terminada.', undefined, user);
     setUser(null);
-    writeBrowserState('edunombre_demo_user_v1', null);
     setPurchasedItems([]);
     setSessionToken(null);
   };
@@ -453,7 +521,14 @@ export function App() {
             />
 
             {/* Catalog Grid */}
-            {filteredCatalog.length === 0 ? (
+            {!DEMO_MODE && catalogLoadError && (
+              <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+                Não foi possível ligar ao catálogo real: {catalogLoadError}. Os cursos de demonstração não serão apresentados como conteúdo real.
+              </div>
+            )}
+            {!DEMO_MODE && catalogLoading ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">A carregar cursos publicados…</div>
+            ) : filteredCatalog.length === 0 ? (
               <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm space-y-3">
                 <BookOpen className="w-10 h-10 text-[#858586] mx-auto" />
                 <h3 className="text-lg font-bold text-[#0c2340]">Nenhum item encontrado</h3>
@@ -521,15 +596,30 @@ export function App() {
         onClose={() => setCartOpen(false)}
         cartItems={cartItems}
         onRemoveItem={handleRemoveFromCart}
-        onOpenFormModal={(need, details) => {
+        busy={checkoutBusy}
+        onOpenFormModal={async (_need, _details, paymentMethod) => {
           if (!user) { setAuthOpen(true); return; }
           if (DEMO_MODE) {
-            alert('As compras e pagamentos estão desactivados no modo de demonstração.');
+            alert('A criação de pedidos e os pagamentos estão desactivados no modo de demonstração.');
             return;
           }
-          apiCreateOrder(cartItems.map(({ item, quantity }) => ({ productId: item.id, quantity })), 'whatsapp')
-            .then(() => handleOpenForm(need || 'Comprar', details || ''))
-            .catch((error) => alert(error instanceof Error ? error.message : 'Não foi possível registar o pedido de compra.'));
+          if (checkoutBusy || cartItems.length === 0) return;
+          setCheckoutBusy(true);
+          const itemsSnapshot = cartItems.map(({ item, quantity }) => ({ item, quantity }));
+          try {
+            const order = await apiCreateOrder(
+              itemsSnapshot.map(({ item, quantity }) => ({ productId: item.id, quantity })),
+              'platform',
+              paymentMethod || 'multicaixa_express'
+            );
+            setInvoiceOrder({ order, items: itemsSnapshot });
+            setCartItems([]);
+            setCartOpen(false);
+          } catch (error) {
+            alert(error instanceof Error ? error.message : 'Não foi possível criar a pró-forma.');
+          } finally {
+            setCheckoutBusy(false);
+          }
         }}
       />
 
@@ -537,6 +627,13 @@ export function App() {
         isOpen={authOpen}
         onClose={() => setAuthOpen(false)}
         onLoginSuccess={handleSuccessfulLogin}
+        demoMode={DEMO_MODE}
+      />
+
+      <InvoiceModal
+        order={invoiceOrder?.order || null}
+        items={invoiceOrder?.items || []}
+        onClose={() => setInvoiceOrder(null)}
       />
 
       <div id="aderir">
