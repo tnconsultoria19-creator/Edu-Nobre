@@ -68,6 +68,7 @@ export interface CatalogItem {
   resourceAssetType?: string;
   modules?: CourseModule[];
   lessons?: CourseLesson[];
+  completedLessonIds?: string[];
   level?: 'Iniciante' | 'Intermédio' | 'Avançado' | 'Todos os Níveis';
   approvalStatus?: 'Publicado' | 'Pendente' | 'Rejeitado';
   rejectionReason?: string;
