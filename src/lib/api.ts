@@ -17,7 +17,7 @@ export function setSessionToken(token: string | null): void {
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers || {});
   headers.set('Accept', 'application/json');
-  if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  if (typeof init.body === 'string' && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   const token = getSessionToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
   const response = await fetch(`${API_BASE}${path}`, { ...init, headers, cache: 'no-store' });
@@ -63,10 +63,75 @@ export async function apiRemoveUser(id: string) {
   return request<{ok:boolean}>(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 export async function apiListLibrary() { return request<{items: CatalogItem[]}>('/api/library'); }
-export async function apiCreateOrder(items: Array<{productId: string; quantity: number}>, contactChannel: 'whatsapp' | 'platform' = 'whatsapp') {
-  return request<{orderId:string; status:string; totalAmountAOA:number; message:string}>('/api/orders', {
-    method: 'POST', body: JSON.stringify({items, contactChannel})
+export interface OrderCreateResult {
+  orderId: string;
+  invoiceNumber: string;
+  status: 'paid' | 'pending_payment' | string;
+  totalAmountAOA: number;
+  paymentMethod: string;
+  paymentProvider: string;
+  paymentReference: string | null;
+  paymentStatus: 'paid' | 'awaiting_gateway' | string;
+  message: string;
+}
+export async function apiCreateOrder(
+  items: Array<{productId: string; quantity: number}>,
+  contactChannel: 'whatsapp' | 'platform' = 'platform',
+  paymentMethod: 'multicaixa_express' | 'reference' | 'free' = 'multicaixa_express'
+) {
+  return request<OrderCreateResult>('/api/orders', {
+    method: 'POST', body: JSON.stringify({items, contactChannel, paymentMethod})
   });
+}
+export async function apiEnrollFree(productId: string) {
+  return request<{enrolled: boolean; alreadyEnrolled: boolean}>('/api/enrollments', {
+    method: 'POST', body: JSON.stringify({productId})
+  });
+}
+export async function apiUpdateLessonProgress(productId: string, lessonId: string) {
+  return request<{ok: boolean; lessonId: string}>(`/api/library/${encodeURIComponent(productId)}/progress`, {
+    method: 'POST', body: JSON.stringify({lessonId})
+  });
+}
+export async function apiListOrders() {
+  return request<{orders: Array<Record<string, unknown>>}>('/api/orders');
+}
+export async function apiConfirmOrderPayment(orderId: string, paymentReference?: string) {
+  return request<{ok: boolean; status: string; invoiceNumber?: string; message: string}>(
+    `/api/admin/orders/${encodeURIComponent(orderId)}/confirm-payment`,
+    {method: 'POST', body: JSON.stringify({paymentReference})}
+  );
+}
+export async function apiUploadAsset(file: File) {
+  const headers = new Headers({Accept: 'application/json'});
+  const token = getSessionToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const form = new FormData();
+  form.append('file', file, file.name);
+  const response = await fetch(`${API_BASE}/api/uploads`, {method: 'POST', headers, body: form, cache: 'no-store'});
+  const payload = await response.json().catch(() => ({})) as {error?: string; asset?: {id: string; name: string; type: string; size: number; createdAt: string}};
+  if (!response.ok) throw new Error(payload.error || `A API respondeu com erro (${response.status}).`);
+  if (!payload.asset) throw new Error('A API não devolveu os dados do ficheiro.');
+  return payload.asset;
+}
+export async function apiDownloadAsset(assetId: string, fileName?: string) {
+  const headers = new Headers();
+  const token = getSessionToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const response = await fetch(`${API_BASE}/api/assets/${encodeURIComponent(assetId)}`, {headers, cache: 'no-store'});
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({})) as {error?: string};
+    throw new Error(payload.error || 'Não foi possível descarregar este ficheiro.');
+  }
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = fileName || 'material-edunobre';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
 }
 
 const auditAction = (action: string): AuditLogEntry['action'] => {
