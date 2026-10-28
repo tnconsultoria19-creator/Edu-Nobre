@@ -55,12 +55,23 @@ const BANNERS = [
 
 export const Hero: React.FC<HeroProps> = ({ onExploreClick, onFormadorClick }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
+
   useEffect(() => {
-    const timer = setInterval(() => setCurrentSlide((prev) => (prev + 1) % BANNERS.length), 6000);
-    return (
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % BANNERS.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % BANNERS.length);
+  const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + BANNERS.length) % BANNERS.length);
+  const banner = BANNERS[currentSlide];
+
+  return (
     <section
       className="relative flex min-h-[520px] sm:min-h-[580px] lg:min-h-[640px] items-center overflow-hidden bg-cover bg-center bg-no-repeat"
       style={{ backgroundImage: `url('${banner.image}')` }}
+      aria-label={banner.alt}
     >
       <div className="absolute inset-0 bg-gradient-to-r from-[#071425]/85 via-[#071425]/60 to-[#071425]/25" />
       <div className="absolute inset-0 bg-gradient-to-t from-[#071425]/25 via-transparent to-[#071425]/10" />
@@ -76,7 +87,9 @@ export const Hero: React.FC<HeroProps> = ({ onExploreClick, onFormadorClick }) =
             <button onClick={onFormadorClick} className="rounded-full border border-white/90 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-[#f0a67d] hover:text-[#f0a67d]">Sou formador</button>
           </div>
           <div className="flex flex-wrap items-center gap-2 pt-7">
-            {BANNERS.map((slide, idx) => <button key={slide.id} onClick={() => setCurrentSlide(idx)} aria-label={`Ver banner ${idx + 1}`} aria-current={currentSlide === idx ? 'true' : undefined} className={`h-2 rounded-full border border-white transition-all ${currentSlide === idx ? 'w-8 bg-white' : 'w-2 bg-transparent hover:border-[#f0a67d]'}`} />)}
+            {BANNERS.map((slide, idx) => (
+              <button key={slide.id} onClick={() => setCurrentSlide(idx)} aria-label={`Ver banner ${idx + 1}`} aria-current={currentSlide === idx ? 'true' : undefined} className={`h-2 rounded-full border border-white transition-all ${currentSlide === idx ? 'w-8 bg-white' : 'w-2 bg-transparent hover:border-[#f0a67d]'}`} />
+            ))}
             <span className="ml-2 text-xs tabular-nums text-white/90">{String(currentSlide + 1).padStart(2, '0')} / {String(BANNERS.length).padStart(2, '0')}</span>
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
