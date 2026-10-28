@@ -26,11 +26,12 @@ import {
   History,
   UserPlus,
   Ban,
-  CheckCircle
+  CheckCircle,
+  CreditCard
 } from 'lucide-react';
 import { CatalogItem, Category, ContentType, User, AuditLogEntry } from '../types';
 import { saveLocalAsset } from '../lib/localAssets';
-import { apiUploadAsset } from '../lib/api';
+import { apiUploadAsset, apiListAdminOrders, apiConfirmOrderPayment, AdminOrderRecord } from '../lib/api';
 
 interface AdminPortalModalProps {
   isOpen: boolean;
@@ -71,7 +72,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
   auditLogs,
   demoMode = false,
 }) => {
-  const [activeTab, setActiveTab] = useState<'approvals' | 'catalog' | 'add_edit' | 'creator' | 'users' | 'audit'>(() => currentUser?.role === 'Administrador' ? 'approvals' : 'creator');
+  const [activeTab, setActiveTab] = useState<'approvals' | 'catalog' | 'add_edit' | 'creator' | 'users' | 'audit' | 'orders'>(() => currentUser?.role === 'Administrador' ? 'approvals' : 'creator');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('Todos');
   const [filterCategory, setFilterCategory] = useState<string>('Todas');
@@ -79,6 +80,10 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
   const [usersSearch, setUsersSearch] = useState('');
   const [usersStatusFilter, setUsersStatusFilter] = useState<string>('Todos');
   const [auditSearch, setAuditSearch] = useState('');
+  const [orders, setOrders] = useState<AdminOrderRecord[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState('');
+  const [ordersRefreshKey, setOrdersRefreshKey] = useState(0);
 
   // Form state for creating/editing items
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
@@ -111,6 +116,39 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
       setActiveTab('approvals');
     }
   }, [currentUser?.role]);
+
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'orders' || currentUser?.role !== 'Administrador' || demoMode) return;
+    let alive = true;
+    setOrdersLoading(true);
+    setOrdersError('');
+    apiListAdminOrders().then((result) => {
+      if (alive) setOrders(result.orders);
+    }).catch((error) => {
+      if (alive) setOrdersError(error instanceof Error ? error.message : 'Não foi possível carregar as encomendas.');
+    }).finally(() => {
+      if (alive) setOrdersLoading(false);
+    });
+    return () => { alive = false; };
+  }, [isOpen, activeTab, currentUser?.role, demoMode, ordersRefreshKey]);
+
+  const handleConfirmOrderPayment = async (order: AdminOrderRecord) => {
+    if (!order.id || !['pending_payment', 'requested'].includes(order.status)) return;
+    const paymentReference = window.prompt('Introduza a referência/comprovativo que verificou no canal bancário. Não confirme o pagamento com base apenas no pedido do cliente:');
+    if (paymentReference === null) return;
+    if (!paymentReference.trim()) {
+      alert('Introduza uma referência de pagamento verificada para manter o registo de auditoria.');
+      return;
+    }
+    if (!window.confirm('Confirma que verificou a recepção real de ' + Number(order.total_amount_aoa || 0).toLocaleString('pt-AO') + ' Kz para a encomenda ' + (order.invoice_number || order.id) + '? Só continue depois de verificar no banco/provedor.')) return;
+    try {
+      await apiConfirmOrderPayment(order.id, paymentReference.trim());
+      setOrdersRefreshKey((value) => value + 1);
+      alert('Pagamento registado como verificado. A inscrição foi activada.');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Não foi possível confirmar o pagamento.');
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -382,6 +420,13 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
               >
                 <Users className="w-4 h-4 text-emerald-400" />
                 Utilizadores
+              </button>
+
+              <button
+                onClick={() => setActiveTab('orders')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'orders' ? 'bg-[#0c2340] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}
+              >
+                <CreditCard className="w-4 h-4 text-sky-400" /> Encomendas
               </button>
               <button onClick={() => setActiveTab('audit')} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'audit' ? 'bg-[#0c2340] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}>
                 <History className="w-4 h-4" /> Registo ({auditLogs.length})
@@ -910,6 +955,46 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                   </table>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'orders' && currentUser?.role === 'Administrador' && (
+            <div className="space-y-5">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 text-[#185a7d] flex items-center justify-center shrink-0"><CreditCard className="w-5 h-5" /></div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#0c2340]">Encomendas e verificação de pagamento</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600">As encomendas pagas permanecem pendentes até o provedor confirmar o pagamento ou o administrador verificar a recepção real dos fundos. Esta acção manual não gera pagamentos nem referências Multicaixa.</p>
+                </div>
+              </div>
+              {demoMode ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">O modo de demonstração não usa encomendas ou pagamentos reais.</div>
+              ) : ordersError ? (
+                <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{ordersError}</div>
+              ) : ordersLoading ? (
+                <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">A carregar encomendas…</div>
+              ) : orders.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center"><FileText className="mx-auto mb-2 h-8 w-8 text-slate-300" /><p className="text-sm font-semibold text-[#0c2340]">Ainda não existem encomendas</p><p className="mt-1 text-xs text-slate-500">As pró-formas criadas pelos clientes aparecerão aqui.</p></div>
+              ) : (
+                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                  <table className="w-full min-w-[920px] text-left text-sm">
+                    <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="p-3">Pró-forma</th><th className="p-3">Cliente</th><th className="p-3">Data</th><th className="p-3 text-right">Total</th><th className="p-3">Pagamento</th><th className="p-3">Estado</th><th className="p-3 text-right">Acção</th></tr></thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {orders.map((order) => (
+                        <tr key={order.id} className="align-top hover:bg-slate-50">
+                          <td className="p-3"><p className="font-mono text-xs font-bold text-[#0c2340]">{order.invoice_number || order.id}</p><p className="mt-1 text-[10px] text-slate-400">{order.id}</p></td>
+                          <td className="p-3"><p className="font-semibold text-[#0c2340]">{order.buyer_name || 'Cliente'}</p><p className="text-xs text-slate-500">{order.buyer_email || '—'}</p></td>
+                          <td className="p-3 whitespace-nowrap text-xs text-slate-500">{order.created_at ? new Date(order.created_at).toLocaleString('pt-AO') : '—'}</td>
+                          <td className="p-3 text-right font-bold text-[#0c2340]">{Number(order.total_amount_aoa || 0).toLocaleString('pt-AO')} Kz</td>
+                          <td className="p-3 text-xs text-slate-600">{order.payment_method === 'multicaixa_express' ? 'Multicaixa Express' : order.payment_method === 'reference' ? 'Referência' : order.payment_method || order.payment_provider || '—'}{order.payment_reference && <p className="mt-1 text-[10px] text-slate-400">Ref.: {order.payment_reference}</p>}</td>
+                          <td className="p-3"><span className={'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ' + (order.status === 'paid' ? 'bg-emerald-50 text-emerald-700' : order.status === 'pending_payment' || order.status === 'requested' ? 'bg-amber-50 text-amber-800' : 'bg-slate-100 text-slate-600')}>{order.status === 'pending_payment' ? 'A aguardar pagamento' : order.status === 'requested' ? 'Pedido pendente' : order.status === 'paid' ? 'Pago' : order.status}</span></td>
+                          <td className="p-3 text-right">{['pending_payment', 'requested'].includes(order.status) ? <button type="button" onClick={() => void handleConfirmOrderPayment(order)} className="rounded-full bg-[#185a7d] px-3 py-2 text-xs font-semibold text-white hover:bg-[#12415b]">Confirmar pagamento</button> : <span className="text-xs text-slate-400">—</span>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
