@@ -60,11 +60,16 @@ export const UserLibraryModal: React.FC<UserLibraryModalProps> = ({ isOpen, onCl
   }, [userUploads, currentUser?.id, uploadsOwnerId]);
 
   useEffect(() => {
+    if (!isOpen) return;
+    if (purchasedItems.length > 0 && (!selectedItem || !purchasedItems.some((item) => item.id === selectedItem.id))) setSelectedItem(purchasedItems[0]);
+  }, [isOpen, purchasedItems, selectedItem?.id]);
+
+  useEffect(() => {
     let alive = true;
     let objectUrl = '';
     setLocalResourceUrl('');
     setActiveLessonId(selectedItem?.lessons?.[0]?.id || null);
-    setCompletedLessonIds([]);
+    setCompletedLessonIds(selectedItem?.completedLessonIds || []);
     if (demoMode && selectedItem?.resourceAssetId) {
       getLocalAsset(selectedItem.resourceAssetId).then((record) => {
         if (alive && record) {
