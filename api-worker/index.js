@@ -748,7 +748,17 @@ form.addEventListener('submit',async(e)=>{
   if (path === "/api/library" && method === "GET") {
     const user = requireUser(currentUser);
     const result = await env.DB.prepare(PRODUCT_SELECT + " JOIN enrollments e ON e.product_id = p.id WHERE e.user_id = ? AND e.status IN ('active', 'completed') ORDER BY e.granted_at DESC").bind(user.id).all();
-    return respond({ items: (result.results || []).map(function (row) { return publicProduct(row, true); }) });
+    const progressRows = (await env.DB.prepare("SELECT product_id, lesson_id FROM lesson_progress WHERE user_id = ?").bind(user.id).all()).results || [];
+    const progressByProduct = new Map();
+    progressRows.forEach(function (row) {
+      if (!progressByProduct.has(row.product_id)) progressByProduct.set(row.product_id, []);
+      progressByProduct.get(row.product_id).push(row.lesson_id);
+    });
+    return respond({ items: (result.results || []).map(function (row) {
+      const product = publicProduct(row, true);
+      product.completedLessonIds = progressByProduct.get(row.id) || [];
+      return product;
+    }) });
   }
 
   throw new HttpError(404, "Rota não encontrada.");
