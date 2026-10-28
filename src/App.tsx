@@ -679,6 +679,7 @@ export function App() {
         onClose={() => setUserLibraryOpen(false)}
         purchasedItems={purchasedItems}
         currentUser={user}
+        demoMode={DEMO_MODE}
       />
     </div>
   );
