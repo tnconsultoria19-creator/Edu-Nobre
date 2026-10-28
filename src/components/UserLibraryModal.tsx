@@ -246,7 +246,7 @@ export const UserLibraryModal: React.FC<UserLibraryModalProps> = ({ isOpen, onCl
                         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                           <div className="mb-2 flex items-center justify-between gap-3">
                             <p className="text-xs font-bold text-[#0c2340]">Conteúdo do curso</p>
-                            <p className="text-[10px] text-slate-500">{completedLessonIds.length} de {selectedItem.lessons.length} aulas concluídas nesta sessão</p>
+                            <p className="text-[10px] text-slate-500">{completedLessonIds.length} de {selectedItem.lessons.length} aulas concluídas</p>
                           </div>
                           <div className="space-y-1.5">
                             {selectedItem.lessons.map((lesson, index) => (
@@ -259,13 +259,15 @@ export const UserLibraryModal: React.FC<UserLibraryModalProps> = ({ isOpen, onCl
                         </div>
                       )}
                       {embedUrl ? (
-                        <div className="aspect-video rounded-xl overflow-hidden bg-slate-900"><iframe src={embedUrl} title={(activeLesson?.title || selectedItem.title)} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen /></div>
-                        {activeLesson && (
-                          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                            <p className="text-xs font-semibold text-[#0c2340]">{activeLesson.title}</p>
-                            <button type="button" onClick={() => void markLessonComplete(activeLesson.id)} disabled={completedLessonIds.includes(activeLesson.id)} className="rounded-full border border-[#185a7d] px-4 py-2 text-xs font-semibold text-[#185a7d] disabled:border-emerald-200 disabled:text-emerald-700">{completedLessonIds.includes(activeLesson.id) ? 'Aula concluída' : 'Marcar como concluída'}</button>
-                          </div>
-                        )}
+                        <>
+                          <div className="aspect-video rounded-xl overflow-hidden bg-slate-900"><iframe src={embedUrl} title={(activeLesson?.title || selectedItem.title)} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen /></div>
+                          {activeLesson && (
+                            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                              <p className="text-xs font-semibold text-[#0c2340]">{activeLesson.title}</p>
+                              <button type="button" onClick={() => void markLessonComplete(activeLesson.id)} disabled={completedLessonIds.includes(activeLesson.id)} className="rounded-full border border-[#185a7d] px-4 py-2 text-xs font-semibold text-[#185a7d] disabled:border-emerald-200 disabled:text-emerald-700">{completedLessonIds.includes(activeLesson.id) ? 'Aula concluída' : 'Marcar como concluída'}</button>
+                            </div>
+                          )}
+                        </>
                       ) : localResourceUrl && isPdf ? (
                         <iframe src={localResourceUrl} title={selectedItem.title} className="w-full h-[65vh] rounded-lg border border-slate-200" />
                       ) : selectedItem.contentUrl && isPdf ? (
