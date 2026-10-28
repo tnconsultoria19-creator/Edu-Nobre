@@ -29,6 +29,15 @@ export interface CourseModule {
   lessons: number;
 }
 
+export interface CourseLesson {
+  id: string;
+  title: string;
+  youtubeUrl?: string;
+  contentUrl?: string;
+  duration?: string;
+  preview?: boolean;
+}
+
 export interface CatalogItem {
   id: string;
   title: string;
@@ -58,6 +67,7 @@ export interface CatalogItem {
   resourceAssetName?: string;
   resourceAssetType?: string;
   modules?: CourseModule[];
+  lessons?: CourseLesson[];
   level?: 'Iniciante' | 'Intermédio' | 'Avançado' | 'Todos os Níveis';
   approvalStatus?: 'Publicado' | 'Pendente' | 'Rejeitado';
   rejectionReason?: string;
