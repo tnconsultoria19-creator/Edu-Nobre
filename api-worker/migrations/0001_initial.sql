@@ -34,6 +34,12 @@ CREATE TABLE IF NOT EXISTS products (
     is_published BOOLEAN DEFAULT FALSE,
     moderation_status TEXT CHECK(moderation_status IN ('draft', 'pending', 'published', 'rejected', 'archived')) DEFAULT 'pending',
     rejection_reason TEXT,
+    youtube_url TEXT,
+    content_url TEXT,
+    lessons_json TEXT NOT NULL DEFAULT '[]',
+    resource_asset_id TEXT,
+    resource_asset_name TEXT,
+    resource_asset_type TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -93,6 +99,8 @@ CREATE TABLE IF NOT EXISTS orders (
     status TEXT CHECK(status IN ('requested', 'pending_payment', 'paid', 'failed', 'cancelled', 'refunded')) DEFAULT 'requested',
     payment_provider TEXT,
     payment_reference TEXT,
+    payment_method TEXT,
+    invoice_number TEXT UNIQUE,
     contact_channel TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -107,6 +115,36 @@ CREATE TABLE IF NOT EXISTS order_items (
     unit_price_aoa INTEGER NOT NULL CHECK(unit_price_aoa >= 0),
     line_total_aoa INTEGER NOT NULL CHECK(line_total_aoa >= 0),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE IF NOT EXISTS course_assets (
+    id TEXT PRIMARY KEY,
+    creator_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    product_id TEXT REFERENCES products(id) ON DELETE SET NULL,
+    object_key TEXT NOT NULL UNIQUE,
+    file_name TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL CHECK(size_bytes >= 0),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS lesson_progress (
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    lesson_id TEXT NOT NULL,
+    completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(user_id, product_id, lesson_id)
+);
+
+CREATE TABLE IF NOT EXISTS payment_events (
+    id TEXT PRIMARY KEY,
+    order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    provider TEXT NOT NULL,
+    provider_event_id TEXT NOT NULL UNIQUE,
+    event_status TEXT NOT NULL,
+    payload_json TEXT,
+    processed_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -133,3 +171,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs(actor_id, created_
 CREATE INDEX IF NOT EXISTS idx_orders_buyer_status ON orders(buyer_id, status, created_at);
 CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_expiry ON sessions(user_id, expires_at);
+
+CREATE INDEX IF NOT EXISTS idx_course_assets_creator ON course_assets(creator_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_course_assets_product ON course_assets(product_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_invoice_number ON orders(invoice_number) WHERE invoice_number IS NOT NULL;
