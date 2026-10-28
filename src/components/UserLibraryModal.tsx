@@ -61,7 +61,13 @@ export const UserLibraryModal: React.FC<UserLibraryModalProps> = ({ isOpen, onCl
 
   useEffect(() => {
     if (!isOpen) return;
-    if (purchasedItems.length > 0 && (!selectedItem || !purchasedItems.some((item) => item.id === selectedItem.id))) setSelectedItem(purchasedItems[0]);
+    if (purchasedItems.length > 0) {
+      const refreshedSelection = selectedItem ? purchasedItems.find((item) => item.id === selectedItem.id) : null;
+      if (refreshedSelection && refreshedSelection !== selectedItem) setSelectedItem(refreshedSelection);
+      else if (!refreshedSelection) setSelectedItem(purchasedItems[0]);
+    } else if (selectedItem) {
+      setSelectedItem(null);
+    }
   }, [isOpen, purchasedItems, selectedItem?.id]);
 
   useEffect(() => {
