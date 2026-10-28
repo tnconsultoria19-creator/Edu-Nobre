@@ -52,7 +52,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, items, onClos
             </div>
           </div>
 
-          <div className="my-6 rounded-xl border p-4 ${isPaid ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}">
+          <div className={"my-6 rounded-xl border p-4 " + (isPaid ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50")}>
             <div className="flex items-start gap-3">
               {isPaid ? <CircleCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" /> : <Clock3 className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />}
               <div>
