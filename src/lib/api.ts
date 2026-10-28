@@ -93,8 +93,23 @@ export async function apiUpdateLessonProgress(productId: string, lessonId: strin
     method: 'POST', body: JSON.stringify({lessonId})
   });
 }
+export interface AdminOrderRecord {
+  id: string;
+  invoice_number?: string | null;
+  buyer_name?: string;
+  buyer_email?: string;
+  total_amount_aoa: number;
+  status: string;
+  payment_provider?: string | null;
+  payment_method?: string | null;
+  payment_reference?: string | null;
+  created_at?: string;
+}
 export async function apiListOrders() {
   return request<{orders: Array<Record<string, unknown>>}>('/api/orders');
+}
+export async function apiListAdminOrders() {
+  return request<{orders: AdminOrderRecord[]}>('/api/admin/orders');
 }
 export async function apiConfirmOrderPayment(orderId: string, paymentReference?: string) {
   return request<{ok: boolean; status: string; invoiceNumber?: string; message: string}>(
